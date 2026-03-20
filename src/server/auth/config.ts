@@ -10,7 +10,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db) as never,
   session: { strategy: "jwt" },
   pages: {
-    signIn: "/login",
+    signIn: "/NEP/login",
   },
   providers: [
     Credentials({
