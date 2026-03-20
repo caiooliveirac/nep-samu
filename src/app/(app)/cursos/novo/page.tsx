@@ -7,10 +7,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
+import { PROFISSOES, PROFISSAO_LABELS } from "@/lib/enums";
+import type { Profissao } from "@/lib/enums";
 
 export default function NovoCursoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [publicoAlvo, setPublicoAlvo] = useState<string[]>([]);
+
+  function toggleProfissao(p: string) {
+    setPublicoAlvo((prev) =>
+      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
+    );
+  }
+
+  const publicoAlvoText = publicoAlvo
+    .map((p) => PROFISSAO_LABELS[p as Profissao])
+    .join(", ");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -27,7 +40,7 @@ export default function NovoCursoPage() {
           cargaHoraria: form.get("cargaHoraria")
             ? Number(form.get("cargaHoraria"))
             : undefined,
-          publicoAlvoDescritivo: form.get("publicoAlvo") || undefined,
+          publicoAlvoDescritivo: publicoAlvoText || undefined,
         }),
       });
 
@@ -86,12 +99,28 @@ export default function NovoCursoPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="publicoAlvo">Público-alvo descritivo</Label>
-          <Input
-            id="publicoAlvo"
-            name="publicoAlvo"
-            placeholder="Ex.: Médicos e enfermeiros do APH"
-          />
+          <Label>Público-alvo (profissões)</Label>
+          <div className="flex flex-wrap gap-2">
+            {PROFISSOES.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => toggleProfissao(p)}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors ${
+                  publicoAlvo.includes(p)
+                    ? "bg-[var(--samu-blue)] text-white"
+                    : "bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+                }`}
+              >
+                {PROFISSAO_LABELS[p as Profissao]}
+              </button>
+            ))}
+          </div>
+          {publicoAlvoText && (
+            <p className="text-xs text-[var(--text-muted)]">
+              Público-alvo: {publicoAlvoText}
+            </p>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">
