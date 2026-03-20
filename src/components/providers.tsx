@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider basePath="/NEP/api/auth">
       {children}
       <Toaster
         position="top-right"
