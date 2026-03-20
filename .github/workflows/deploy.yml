@@ -28,6 +28,9 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 
+            # Garantir pnpm disponível
+            command -v pnpm >/dev/null 2>&1 || npm i -g pnpm
+
             APP_DIR=${{ env.DEPLOY_PATH }}
             REPO_URL=https://github.com/${{ github.repository }}.git
 
@@ -37,21 +40,28 @@ jobs:
             fi
 
             cd "$APP_DIR"
+
+            # Preservar .env antes do reset
+            [ -f .env ] && cp .env /tmp/nep-samu-env-backup
+
             git fetch origin main
             git reset --hard origin/main
 
+            # Restaurar .env
+            [ -f /tmp/nep-samu-env-backup ] && mv /tmp/nep-samu-env-backup .env
+
             # Instalar dependências
-            npm install --production=false
+            pnpm install --frozen-lockfile
 
             # Build
-            npm run build
+            pnpm build
 
             # Aplicar migrations (push para sync idempotente)
-            npx drizzle-kit push --force
+            pnpm drizzle-kit push --force
 
             # Restart com PM2
             pm2 restart ${{ env.APP_NAME }} 2>/dev/null || \
-              pm2 start npm --name "${{ env.APP_NAME }}" -- start -- -p ${{ env.PORT }}
+              pm2 start ecosystem.config.js --only ${{ env.APP_NAME }}
 
             pm2 save
 
