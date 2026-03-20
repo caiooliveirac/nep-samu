@@ -6,14 +6,20 @@ export default auth((req: NextRequest & { auth: unknown }) => {
   const { pathname } = req.nextUrl;
   const session = req.auth as { user?: { role: string } } | null;
 
+  // Strip basePath for route matching
+  const basePath = "/NEP";
+  const path = pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || "/"
+    : pathname;
+
   // Public paths
   const publicPaths = ["/login", "/convite", "/api/auth", "/api/health"];
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
+  const isPublic = publicPaths.some((p) => path.startsWith(p));
   if (isPublic) return NextResponse.next();
 
   // Not authenticated -> redirect to login
   if (!session?.user) {
-    const loginUrl = new URL("/login", req.url);
+    const loginUrl = new URL(`${basePath}/login`, req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
