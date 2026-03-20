@@ -40,6 +40,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "unidade:edit",
     "profissional:create",
     "profissional:validate",
+    "profissional:invite",
     "relatorio:view",
     "relatorio:export",
     "notificacao:send",

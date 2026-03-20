@@ -50,6 +50,27 @@ export const unidadeSchema = z.object({
   endereco: z.string().optional(),
 });
 
+export const conviteCreateSchema = z.object({
+  unidadeId: z.string().uuid("Selecione uma unidade"),
+});
+
+export const conviteRegistrarSchema = z.object({
+  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  email: z.email("Email inválido"),
+  telefone: z.string().min(10, "Telefone inválido").optional(),
+  profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
+  senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+});
+
+export const profissionalCreateSchema = z.object({
+  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  email: z.email("Email inválido"),
+  telefone: z.string().optional(),
+  profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
+  unidadeId: z.string().uuid("Selecione uma unidade"),
+  senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+});
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function isValidUUID(value: string): boolean {
   return UUID_RE.test(value);
@@ -60,3 +81,6 @@ export type CursoInput = z.infer<typeof cursoSchema>;
 export type TurmaInput = z.infer<typeof turmaSchema>;
 export type ProfissionalInput = z.infer<typeof profissionalSchema>;
 export type UnidadeInput = z.infer<typeof unidadeSchema>;
+export type ConviteCreateInput = z.infer<typeof conviteCreateSchema>;
+export type ConviteRegistrarInput = z.infer<typeof conviteRegistrarSchema>;
+export type ProfissionalCreateInput = z.infer<typeof profissionalCreateSchema>;

@@ -31,6 +31,7 @@ export default async function ProfissionaisPage() {
     <ProfissionaisClient
       profissionais={allUsers}
       unidades={allUnidades}
+      userRole={session.user.role}
     />
   );
 }

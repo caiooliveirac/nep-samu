@@ -14,7 +14,12 @@ export default auth((req: NextRequest & { auth: unknown }) => {
 
   // Public paths (check against stripped path)
   const publicPaths = ["/login", "/convite", "/api/auth", "/api/health"];
-  if (publicPaths.some((p) => path.startsWith(p))) return NextResponse.next();
+  const isPublic = publicPaths.some((p) => path.startsWith(p));
+  // /api/convites/:token/registrar is public (for self-registration via invite link)
+  const isConviteRegistrar = /^\/api\/convites\/[^/]+\/registrar$/.test(path);
+  // GET /api/convites/:token is also public (fetch convite info for the form)
+  const isConviteGet = /^\/api\/convites\/[^/]+$/.test(path) && req.method === "GET";
+  if (isPublic || isConviteRegistrar || isConviteGet) return NextResponse.next();
 
   // Not authenticated -> redirect to /NEP/login
   if (!session?.user) {

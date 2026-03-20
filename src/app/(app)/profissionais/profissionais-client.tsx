@@ -1,12 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Search, Pencil, History, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Pencil,
+  History,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  LinkIcon,
+  Copy,
+  Check,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PROFISSOES, PROFISSAO_LABELS, type Profissao } from "@/lib/enums";
+import { apiFetch } from "@/lib/api-client";
 
 interface Vinculo {
   id: string;
@@ -32,22 +47,122 @@ interface UnidadeOption {
   municipio: { id: string; nome: string } | null;
 }
 
+interface Convite {
+  id: string;
+  token: string;
+  expiraEm: string;
+  createdAt: string;
+  unidade: UnidadeOption | null;
+  criadoPorUser: { nome: string } | null;
+}
+
 type SortKey = "nome" | "profissao" | "unidade";
 type SortDir = "asc" | "desc";
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "/NEP";
+
 export function ProfissionaisClient({
-  profissionais,
+  profissionais: initialProfissionais,
   unidades,
+  userRole,
 }: {
   profissionais: Profissional[];
   unidades: UnidadeOption[];
+  userRole: string;
 }) {
+  const [profissionais, setProfissionais] = useState(initialProfissionais);
   const [search, setSearch] = useState("");
   const [filterProfissao, setFilterProfissao] = useState("");
   const [filterUnidade, setFilterUnidade] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+
+  // Dialog states
+  const [showCadastrar, setShowCadastrar] = useState(false);
+  const [showConvite, setShowConvite] = useState(false);
+  const [showConvites, setShowConvites] = useState(false);
+  const [convites, setConvites] = useState<Convite[]>([]);
+  const [convitesLoading, setConvitesLoading] = useState(false);
+
+  // Cadastrar form
+  const [cadForm, setCadForm] = useState({
+    nome: "",
+    email: "",
+    telefone: "",
+    profissao: "",
+    unidadeId: "",
+    senha: "",
+  });
+  const [cadLoading, setCadLoading] = useState(false);
+  const [cadError, setCadError] = useState("");
+
+  // Convite form
+  const [conviteUnidadeId, setConviteUnidadeId] = useState("");
+  const [conviteLoading, setConviteLoading] = useState(false);
+  const [conviteLink, setConviteLink] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  // Handlers
+  async function handleCadastrar(e: React.FormEvent) {
+    e.preventDefault();
+    setCadError("");
+    setCadLoading(true);
+    try {
+      const created = await apiFetch<{ id: string; nome: string; email: string }>("/api/profissionais", {
+        method: "POST",
+        body: JSON.stringify(cadForm),
+      });
+      setProfissionais((prev) => [
+        {
+          id: created.id,
+          nome: created.nome ?? cadForm.nome,
+          profissao: cadForm.profissao,
+          ativo: true,
+          vinculos: [],
+        },
+        ...prev,
+      ]);
+      setShowCadastrar(false);
+      setCadForm({ nome: "", email: "", telefone: "", profissao: "", unidadeId: "", senha: "" });
+    } catch (err) {
+      setCadError(err instanceof Error ? err.message : "Erro ao cadastrar");
+    } finally {
+      setCadLoading(false);
+    }
+  }
+
+  async function handleGerarConvite(e: React.FormEvent) {
+    e.preventDefault();
+    setConviteLoading(true);
+    try {
+      const created = await apiFetch<{ token: string }>("/api/convites", {
+        method: "POST",
+        body: JSON.stringify({ unidadeId: conviteUnidadeId }),
+      });
+      const url = `${window.location.origin}${BASE_PATH}/convite/${created.token}`;
+      setConviteLink(url);
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch {
+      // ignore
+    } finally {
+      setConviteLoading(false);
+    }
+  }
+
+  const loadConvites = useCallback(async () => {
+    setConvitesLoading(true);
+    try {
+      const data = await apiFetch<Convite[]>("/api/convites");
+      setConvites(data);
+    } catch {
+      // ignore
+    } finally {
+      setConvitesLoading(false);
+    }
+  }, []);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -139,10 +254,32 @@ export function ProfissionaisClient({
             {filtered.length} de {profissionais.length} profissional(is)
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4" />
-          Cadastrar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowConvite(true);
+              setConviteLink("");
+              setCopied(false);
+            }}
+          >
+            <LinkIcon className="h-4 w-4" />
+            Gerar Link
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              loadConvites();
+              setShowConvites(true);
+            }}
+          >
+            Links Gerados
+          </Button>
+          <Button onClick={() => setShowCadastrar(true)}>
+            <Plus className="h-4 w-4" />
+            Cadastrar
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -297,6 +434,268 @@ export function ProfissionaisClient({
           </tbody>
         </table>
       </div>
+
+      {/* Dialog: Cadastrar Profissional */}
+      {showCadastrar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Cadastrar Profissional</h2>
+              <button onClick={() => setShowCadastrar(false)}>
+                <X className="h-5 w-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+            <form onSubmit={handleCadastrar} className="space-y-3">
+              <div>
+                <Label htmlFor="cad-nome">Nome *</Label>
+                <Input
+                  id="cad-nome"
+                  required
+                  value={cadForm.nome}
+                  onChange={(e) => setCadForm((f) => ({ ...f, nome: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cad-email">Email *</Label>
+                <Input
+                  id="cad-email"
+                  type="email"
+                  required
+                  value={cadForm.email}
+                  onChange={(e) => setCadForm((f) => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cad-tel">Telefone</Label>
+                <Input
+                  id="cad-tel"
+                  value={cadForm.telefone}
+                  onChange={(e) => setCadForm((f) => ({ ...f, telefone: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cad-prof">Profissão *</Label>
+                <select
+                  id="cad-prof"
+                  required
+                  value={cadForm.profissao}
+                  onChange={(e) => setCadForm((f) => ({ ...f, profissao: e.target.value }))}
+                  className={selectClass + " w-full"}
+                >
+                  <option value="">Selecione...</option>
+                  {PROFISSOES.map((p) => (
+                    <option key={p} value={p}>{PROFISSAO_LABELS[p]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="cad-uni">Unidade *</Label>
+                <select
+                  id="cad-uni"
+                  required
+                  value={cadForm.unidadeId}
+                  onChange={(e) => setCadForm((f) => ({ ...f, unidadeId: e.target.value }))}
+                  className={selectClass + " w-full"}
+                >
+                  <option value="">Selecione...</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nome} — {u.municipio?.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="cad-senha">Senha *</Label>
+                <Input
+                  id="cad-senha"
+                  type="password"
+                  required
+                  minLength={6}
+                  value={cadForm.senha}
+                  onChange={(e) => setCadForm((f) => ({ ...f, senha: e.target.value }))}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+              {cadError && <p className="text-sm text-red-500">{cadError}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setShowCadastrar(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={cadLoading}>
+                  {cadLoading ? "Salvando..." : "Cadastrar"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog: Gerar Link de Cadastro */}
+      {showConvite && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Gerar Link de Cadastro</h2>
+              <button onClick={() => setShowConvite(false)}>
+                <X className="h-5 w-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+            {!conviteLink ? (
+              <form onSubmit={handleGerarConvite} className="space-y-3">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Gere um link compartilhável para que profissionais se cadastrem
+                  diretamente vinculados a uma unidade.
+                </p>
+                <div>
+                  <Label htmlFor="conv-uni">Unidade *</Label>
+                  <select
+                    id="conv-uni"
+                    required
+                    value={conviteUnidadeId}
+                    onChange={(e) => setConviteUnidadeId(e.target.value)}
+                    className={selectClass + " w-full"}
+                  >
+                    <option value="">Selecione a unidade...</option>
+                    {unidades.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.nome} — {u.municipio?.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setShowConvite(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={conviteLoading}>
+                    {conviteLoading ? "Gerando..." : "Gerar e Copiar Link"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+                  <code className="flex-1 break-all text-xs">{conviteLink}</code>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(conviteLink);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 3000);
+                    }}
+                    className="shrink-0"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-[var(--text-muted)]" />
+                    )}
+                  </button>
+                </div>
+                {copied && (
+                  <p className="text-sm text-green-600">Link copiado!</p>
+                )}
+                <p className="text-xs text-[var(--text-muted)]">
+                  O link é válido por 30 dias. Compartilhe com os profissionais
+                  da unidade para que façam o autocadastro.
+                </p>
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={() => setShowConvite(false)}>
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Dialog: Lista de Convites */}
+      {showConvites && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Links de Cadastro Gerados</h2>
+              <button onClick={() => setShowConvites(false)}>
+                <X className="h-5 w-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+            {convitesLoading ? (
+              <p className="py-8 text-center text-[var(--text-muted)]">Carregando...</p>
+            ) : convites.length === 0 ? (
+              <p className="py-8 text-center text-[var(--text-muted)]">
+                Nenhum link gerado ainda
+              </p>
+            ) : (
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
+                      <th className="px-3 py-2">Unidade</th>
+                      {userRole === "ORGANIZADOR" && <th className="px-3 py-2">Criado por</th>}
+                      <th className="px-3 py-2">Expira em</th>
+                      <th className="px-3 py-2 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {convites.map((c) => {
+                      const expirado = new Date(c.expiraEm) < new Date();
+                      const url = `${window.location.origin}${BASE_PATH}/convite/${c.token}`;
+                      return (
+                        <tr
+                          key={c.id}
+                          className="border-b border-[var(--border-muted)]"
+                        >
+                          <td className="px-3 py-2">
+                            {c.unidade?.nome}
+                            <span className="ml-1 text-xs text-[var(--text-muted)]">
+                              {c.unidade?.municipio?.nome}
+                            </span>
+                          </td>
+                          {userRole === "ORGANIZADOR" && (
+                            <td className="px-3 py-2 text-[var(--text-secondary)]">
+                              {c.criadoPorUser?.nome}
+                            </td>
+                          )}
+                          <td className="px-3 py-2">
+                            <span className={expirado ? "text-red-500" : ""}>
+                              {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
+                            </span>
+                            {expirado && (
+                              <Badge variant="outline" className="ml-1 text-red-500 border-red-300">
+                                Expirado
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {!expirado && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Copiar link"
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(url);
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" onClick={() => setShowConvites(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

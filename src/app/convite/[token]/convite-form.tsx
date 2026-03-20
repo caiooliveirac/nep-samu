@@ -1,0 +1,176 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { PROFISSOES, PROFISSAO_LABELS } from "@/lib/enums";
+import { apiFetch, ApiError } from "@/lib/api-client";
+
+interface Props {
+  token: string;
+  unidade: { id: string; nome: string };
+  municipio: string;
+}
+
+export function ConviteForm({ token, unidade, municipio }: Props) {
+  const [form, setForm] = useState({
+    nome: "",
+    email: "",
+    telefone: "",
+    profissao: "",
+    senha: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const selectClass =
+    "flex h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      await apiFetch(`/api/convites/${token}/registrar`, {
+        method: "POST",
+        body: JSON.stringify(form),
+      });
+      setSuccess(true);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("Erro ao realizar cadastro. Tente novamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6 text-center">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--status-success)]">
+          <span className="text-lg text-white">✓</span>
+        </div>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          Cadastro realizado!
+        </h2>
+        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+          Seu cadastro foi enviado para validação do coordenador. Você poderá
+          acessar o sistema após a aprovação.
+        </p>
+        <a
+          href={`${process.env.NEXT_PUBLIC_BASE_PATH || "/NEP"}/login`}
+          className="mt-4 inline-block text-sm font-medium text-[var(--samu-blue)] hover:underline"
+        >
+          Ir para o login
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6"
+    >
+      {/* Locked fields */}
+      <div className="space-y-2">
+        <Label className="text-[var(--text-secondary)] text-xs">
+          Município
+        </Label>
+        <Input value={municipio} disabled className="bg-[var(--bg-tertiary)]" />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-[var(--text-secondary)] text-xs">
+          Unidade / Serviço
+        </Label>
+        <Input
+          value={unidade.nome}
+          disabled
+          className="bg-[var(--bg-tertiary)]"
+        />
+      </div>
+
+      <hr className="border-[var(--border-muted)]" />
+
+      {/* Editable fields */}
+      <div className="space-y-2">
+        <Label htmlFor="nome">Nome completo *</Label>
+        <Input
+          id="nome"
+          required
+          value={form.nome}
+          onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+          placeholder="Seu nome completo"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email *</Label>
+        <Input
+          id="email"
+          type="email"
+          required
+          value={form.email}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          placeholder="seu@email.com"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="telefone">Telefone</Label>
+        <Input
+          id="telefone"
+          value={form.telefone}
+          onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))}
+          placeholder="(71) 99999-9999"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="profissao">Categoria Profissional *</Label>
+        <select
+          id="profissao"
+          required
+          value={form.profissao}
+          onChange={(e) => setForm((f) => ({ ...f, profissao: e.target.value }))}
+          className={selectClass}
+        >
+          <option value="">Selecione...</option>
+          {PROFISSOES.map((p) => (
+            <option key={p} value={p}>
+              {PROFISSAO_LABELS[p]}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="senha">Senha de acesso *</Label>
+        <Input
+          id="senha"
+          type="password"
+          required
+          minLength={6}
+          value={form.senha}
+          onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))}
+          placeholder="Mínimo 6 caracteres"
+        />
+      </div>
+
+      {error && (
+        <p className="text-sm font-medium text-red-500">{error}</p>
+      )}
+
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? "Cadastrando..." : "Realizar Cadastro"}
+      </Button>
+    </form>
+  );
+}
