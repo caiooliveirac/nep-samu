@@ -118,7 +118,7 @@ export default async function CursoDetailPage({
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">Turmas deste curso</h2>
           {session.user.role === "ORGANIZADOR" && (
-            <Link href="/turmas/nova">
+            <Link href={`/turmas/nova?cursoId=${cursoId}`}>
               <Button size="sm">Nova Turma</Button>
             </Link>
           )}

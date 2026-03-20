@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, BookOpen, Search } from "lucide-react";
+import { Plus, BookOpen, Search, Pencil, CalendarPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -108,11 +108,23 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
                       : "—"}
                   </td>
                   <td className="px-5 py-3">
-                    <Link href={`/cursos/${curso.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Ver
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-1">
+                      <Link href={`/cursos/${curso.id}`}>
+                        <Button variant="ghost" size="sm">
+                          Ver
+                        </Button>
+                      </Link>
+                      <Link href={`/cursos/${curso.id}/editar`}>
+                        <Button variant="ghost" size="sm">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                      <Link href={`/turmas/nova?cursoId=${curso.id}`}>
+                        <Button variant="ghost" size="sm">
+                          <CalendarPlus className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
