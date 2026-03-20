@@ -7,26 +7,32 @@ import { apiError, apiSuccess } from "@/server/lib/utils";
 import { ForbiddenError } from "@/server/lib/errors";
 import { logAudit } from "@/server/services/audit.service";
 import { turmaSchema } from "@/lib/schemas";
-import { desc } from "drizzle-orm";
+import { desc, notInArray } from "drizzle-orm";
 import type { Role } from "@/lib/enums";
+
+const HIDDEN_STATUSES = ["RASCUNHO", "CANCELADA"] as const;
 
 export async function GET() {
   try {
     const session = await auth();
     const role = (session?.user?.role as Role) || "PROFISSIONAL";
 
-    // Organizadores veem tudo, demais não veem RASCUNHO
     const allTurmas = await db.query.turmas.findMany({
       with: { curso: true },
-      orderBy: [desc(turmas.dataInicio)],
+      ...(role !== "ORGANIZADOR" && {
+        where: notInArray(turmas.status, [...HIDDEN_STATUSES]),
+      }),
     });
 
-    const filtered =
-      role === "ORGANIZADOR"
-        ? allTurmas
-        : allTurmas.filter((t) => t.status !== "RASCUNHO");
+    // Inscrições abertas primeiro (por data ASC), depois o resto (por data ASC)
+    const sorted = allTurmas.sort((a, b) => {
+      const aOpen = a.status === "INSCRICOES_ABERTAS" ? 0 : 1;
+      const bOpen = b.status === "INSCRICOES_ABERTAS" ? 0 : 1;
+      if (aOpen !== bOpen) return aOpen - bOpen;
+      return a.dataInicio.localeCompare(b.dataInicio);
+    });
 
-    return apiSuccess(filtered);
+    return apiSuccess(sorted);
   } catch (error) {
     return apiError(error);
   }

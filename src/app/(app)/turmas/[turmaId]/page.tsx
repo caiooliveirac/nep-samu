@@ -30,6 +30,14 @@ export default async function TurmaDetailPage({
 
   if (!turma) redirect("/turmas");
 
+  // Não-organizadores não podem ver turmas RASCUNHO ou CANCELADA
+  if (
+    session.user.role !== "ORGANIZADOR" &&
+    (turma.status === "RASCUNHO" || turma.status === "CANCELADA")
+  ) {
+    notFound();
+  }
+
   const [inscritosCount] = await db
     .select({ count: sql<number>`count(*)` })
     .from(enrollments)
