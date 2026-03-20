@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  basePath: "/NEP",
+  assetPrefix: "/NEP",
+  output: "standalone",
   reactCompiler: true,
 };
 

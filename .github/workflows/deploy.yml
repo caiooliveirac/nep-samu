@@ -1,0 +1,58 @@
+name: Deploy NEP SAMU
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  APP_NAME: nep-samu
+  DEPLOY_PATH: /home/ubuntu/nep-samu
+  PORT: 3002
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            APP_DIR=${{ env.DEPLOY_PATH }}
+            REPO_URL=https://github.com/${{ github.repository }}.git
+
+            # Clone ou pull
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$REPO_URL" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Instalar dependências
+            npm install --production=false
+
+            # Build
+            npm run build
+
+            # Aplicar migrations (push para sync idempotente)
+            npx drizzle-kit push --force
+
+            # Restart com PM2
+            pm2 restart ${{ env.APP_NAME }} 2>/dev/null || \
+              pm2 start npm --name "${{ env.APP_NAME }}" -- start -- -p ${{ env.PORT }}
+
+            pm2 save
+
+            echo "✅ Deploy concluído — porta ${{ env.PORT }}"
