@@ -1,13 +1,13 @@
 import { NextRequest } from "next/server";
 import { db } from "@/server/db";
-import { turmas } from "@/server/db/schema";
+import { turmas, users } from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
 import { hasPermission } from "@/server/auth/rbac";
 import { apiError, apiSuccess } from "@/server/lib/utils";
 import { ForbiddenError } from "@/server/lib/errors";
 import { logAudit } from "@/server/services/audit.service";
 import { turmaSchema } from "@/lib/schemas";
-import { desc, notInArray } from "drizzle-orm";
+import { desc, notInArray, eq } from "drizzle-orm";
 import type { Role } from "@/lib/enums";
 
 const HIDDEN_STATUSES = ["RASCUNHO", "CANCELADA"] as const;
@@ -24,15 +24,31 @@ export async function GET() {
       }),
     });
 
+    let result = allTurmas;
+
+    // Profissionais só veem turmas para as quais são elegíveis
+    if (role === "PROFISSIONAL" && session?.user?.id) {
+      const profissao =
+        session.user.profissao ??
+        (await db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { profissao: true } }))?.profissao;
+
+      if (profissao) {
+        result = result.filter((t) => {
+          const profs = t.profissoesElegiveis as string[] | null;
+          return Array.isArray(profs) && profs.includes(profissao);
+        });
+      }
+    }
+
     // Inscrições abertas primeiro (por data ASC), depois o resto (por data ASC)
-    const sorted = allTurmas.sort((a, b) => {
+    result.sort((a, b) => {
       const aOpen = a.status === "INSCRICOES_ABERTAS" ? 0 : 1;
       const bOpen = b.status === "INSCRICOES_ABERTAS" ? 0 : 1;
       if (aOpen !== bOpen) return aOpen - bOpen;
       return a.dataInicio.localeCompare(b.dataInicio);
     });
 
-    return apiSuccess(sorted);
+    return apiSuccess(result);
   } catch (error) {
     return apiError(error);
   }

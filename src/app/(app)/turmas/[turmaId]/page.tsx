@@ -1,5 +1,5 @@
 import { db } from "@/server/db";
-import { turmas, enrollments } from "@/server/db/schema";
+import { turmas, enrollments, users } from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
 import { redirect, notFound } from "next/navigation";
 import { eq, and, sql, inArray } from "drizzle-orm";
@@ -36,6 +36,17 @@ export default async function TurmaDetailPage({
     (turma.status === "RASCUNHO" || turma.status === "CANCELADA")
   ) {
     notFound();
+  }
+
+  // Profissionais não podem acessar turmas onde não são elegíveis
+  if (session.user.role === "PROFISSIONAL") {
+    const profissao =
+      session.user.profissao ??
+      (await db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { profissao: true } }))?.profissao;
+    const profs = turma.profissoesElegiveis as string[] | null;
+    if (profissao && Array.isArray(profs) && !profs.includes(profissao)) {
+      notFound();
+    }
   }
 
   const [inscritosCount] = await db

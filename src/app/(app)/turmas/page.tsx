@@ -1,8 +1,8 @@
 import { auth } from "@/server/auth/config";
 import { redirect } from "next/navigation";
 import { db } from "@/server/db";
-import { turmas } from "@/server/db/schema";
-import { desc, asc, notInArray } from "drizzle-orm";
+import { turmas, users } from "@/server/db/schema";
+import { notInArray, eq } from "drizzle-orm";
 import { TurmasClient } from "./turmas-client";
 import type { Role } from "@/lib/enums";
 
@@ -21,8 +21,24 @@ export default async function TurmasPage() {
     }),
   });
 
+  let result = allTurmas;
+
+  // Profissionais só veem turmas para as quais são elegíveis
+  if (role === "PROFISSIONAL") {
+    const profissao =
+      session.user.profissao ??
+      (await db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { profissao: true } }))?.profissao;
+
+    if (profissao) {
+      result = result.filter((t) => {
+        const profs = t.profissoesElegiveis as string[] | null;
+        return Array.isArray(profs) && profs.includes(profissao);
+      });
+    }
+  }
+
   // Inscrições abertas primeiro (por data ASC), depois o resto (por data ASC)
-  const sorted = allTurmas.sort((a, b) => {
+  result.sort((a, b) => {
     const aOpen = a.status === "INSCRICOES_ABERTAS" ? 0 : 1;
     const bOpen = b.status === "INSCRICOES_ABERTAS" ? 0 : 1;
     if (aOpen !== bOpen) return aOpen - bOpen;
@@ -30,6 +46,6 @@ export default async function TurmasPage() {
   });
 
   return (
-    <TurmasClient turmas={sorted} role={session.user.role} />
+    <TurmasClient turmas={result} role={session.user.role} />
   );
 }

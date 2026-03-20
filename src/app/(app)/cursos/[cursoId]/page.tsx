@@ -1,7 +1,7 @@
 import { auth } from "@/server/auth/config";
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/server/db";
-import { cursos, turmas } from "@/server/db/schema";
+import { cursos, turmas, users } from "@/server/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import Link from "next/link";
 import { ArrowLeft, Clock, Users, BookOpen, Layers } from "lucide-react";
@@ -27,10 +27,28 @@ export default async function CursoDetailPage({
 
   if (!curso) notFound();
 
-  const turmasRelacionadas = await db.query.turmas.findMany({
-    where: and(eq(turmas.cursoId, cursoId), ne(turmas.status, "CANCELADA")),
+  const allTurmasCurso = await db.query.turmas.findMany({
+    where: and(
+      eq(turmas.cursoId, cursoId),
+      ne(turmas.status, "CANCELADA"),
+      ...(session.user.role !== "ORGANIZADOR" ? [ne(turmas.status, "RASCUNHO")] : []),
+    ),
     orderBy: (t, { desc }) => [desc(t.dataInicio)],
   });
+
+  // Profissionais só veem turmas para as quais são elegíveis
+  let turmasRelacionadas = allTurmasCurso;
+  if (session.user.role === "PROFISSIONAL") {
+    const profissao =
+      session.user.profissao ??
+      (await db.query.users.findFirst({ where: eq(users.id, session.user.id), columns: { profissao: true } }))?.profissao;
+    if (profissao) {
+      turmasRelacionadas = allTurmasCurso.filter((t) => {
+        const profs = t.profissoesElegiveis as string[] | null;
+        return Array.isArray(profs) && profs.includes(profissao);
+      });
+    }
+  }
 
   const formatCargaHoraria = (min: number | null) => {
     if (!min) return "—";
