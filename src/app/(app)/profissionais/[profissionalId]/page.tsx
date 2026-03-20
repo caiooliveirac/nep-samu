@@ -1,9 +1,10 @@
 import { auth } from "@/server/auth/config";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { db } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 import { ProfissionalDetail } from "./profissional-detail";
+import { isValidUUID } from "@/lib/schemas";
 
 export default async function ProfissionalPage({
   params,
@@ -17,6 +18,7 @@ export default async function ProfissionalPage({
   }
 
   const { profissionalId } = await params;
+  if (!isValidUUID(profissionalId)) notFound();
 
   const profissional = await db.query.users.findFirst({
     where: eq(users.id, profissionalId),

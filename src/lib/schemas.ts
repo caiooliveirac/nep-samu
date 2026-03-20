@@ -50,6 +50,11 @@ export const unidadeSchema = z.object({
   endereco: z.string().optional(),
 });
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isValidUUID(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CursoInput = z.infer<typeof cursoSchema>;
 export type TurmaInput = z.infer<typeof turmaSchema>;

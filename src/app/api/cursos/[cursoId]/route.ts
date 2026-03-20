@@ -4,9 +4,9 @@ import { cursos } from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
 import { hasPermission } from "@/server/auth/rbac";
 import { apiError, apiSuccess } from "@/server/lib/utils";
-import { ForbiddenError, NotFoundError } from "@/server/lib/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/server/lib/errors";
 import { logAudit } from "@/server/services/audit.service";
-import { cursoSchema } from "@/lib/schemas";
+import { cursoSchema, isValidUUID } from "@/lib/schemas";
 import { eq, and } from "drizzle-orm";
 import type { Role } from "@/lib/enums";
 
@@ -16,6 +16,7 @@ export async function GET(
 ) {
   try {
     const { cursoId } = await params;
+    if (!isValidUUID(cursoId)) return apiError(new ValidationError("ID inválido"));
     const curso = await db.query.cursos.findFirst({
       where: and(eq(cursos.id, cursoId), eq(cursos.ativo, true)),
       with: { categoria: true },
@@ -41,6 +42,7 @@ export async function PUT(
     }
 
     const { cursoId } = await params;
+    if (!isValidUUID(cursoId)) return apiError(new ValidationError("ID inválido"));
     const existing = await db.query.cursos.findFirst({
       where: eq(cursos.id, cursoId),
     });

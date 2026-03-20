@@ -4,6 +4,7 @@ import { db } from "@/server/db";
 import { cursos, categorias } from "@/server/db/schema";
 import { eq, and } from "drizzle-orm";
 import { EditarCursoForm } from "./editar-curso-form";
+import { isValidUUID } from "@/lib/schemas";
 
 export default async function EditarCursoPage({
   params,
@@ -15,6 +16,7 @@ export default async function EditarCursoPage({
   if (session.user.role !== "ORGANIZADOR") redirect("/painel");
 
   const { cursoId } = await params;
+  if (!isValidUUID(cursoId)) notFound();
 
   const curso = await db.query.cursos.findFirst({
     where: and(eq(cursos.id, cursoId), eq(cursos.ativo, true)),

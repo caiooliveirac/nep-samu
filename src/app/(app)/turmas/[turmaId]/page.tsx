@@ -1,9 +1,10 @@
 import { db } from "@/server/db";
 import { turmas, enrollments } from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { TurmaDetail } from "./turma-detail";
+import { isValidUUID } from "@/lib/schemas";
 
 export default async function TurmaDetailPage({
   params,
@@ -14,6 +15,7 @@ export default async function TurmaDetailPage({
   if (!session?.user) redirect("/login");
 
   const { turmaId } = await params;
+  if (!isValidUUID(turmaId)) notFound();
 
   const turma = await db.query.turmas.findFirst({
     where: eq(turmas.id, turmaId),

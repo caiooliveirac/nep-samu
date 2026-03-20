@@ -6,6 +6,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from "@/server/lib/err
 import { eq } from "drizzle-orm";
 import { logAudit } from "@/server/services/audit.service";
 import { PROFISSOES } from "@/lib/enums";
+import { isValidUUID } from "@/lib/schemas";
 import type { NextRequest } from "next/server";
 
 export async function GET(
@@ -20,6 +21,7 @@ export async function GET(
     }
 
     const { profissionalId } = await params;
+    if (!isValidUUID(profissionalId)) return apiError(new ValidationError("ID inválido"));
 
     const profissional = await db.query.users.findFirst({
       where: eq(users.id, profissionalId),
@@ -64,6 +66,7 @@ export async function PUT(
     }
 
     const { profissionalId } = await params;
+    if (!isValidUUID(profissionalId)) return apiError(new ValidationError("ID inválido"));
     const body = await req.json();
 
     const existing = await db.query.users.findFirst({

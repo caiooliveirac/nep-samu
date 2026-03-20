@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, Clock, Users, BookOpen, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TurmaStatusBadge } from "@/components/shared/status-badge";
+import { isValidUUID } from "@/lib/schemas";
 
 export default async function CursoDetailPage({
   params,
@@ -17,6 +18,7 @@ export default async function CursoDetailPage({
   if (!session?.user) redirect("/login");
 
   const { cursoId } = await params;
+  if (!isValidUUID(cursoId)) notFound();
 
   const curso = await db.query.cursos.findFirst({
     where: and(eq(cursos.id, cursoId), eq(cursos.ativo, true)),

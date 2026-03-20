@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Calendar, MapPin, Clock, Users, UserCheck, ListOrdered } from "lucide-react";
+import Link from "next/link";
+import { Calendar, MapPin, Clock, Users, UserCheck, ListOrdered, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricsCard } from "@/components/dashboard/metrics-card";
 import { OccupancyBar } from "@/components/dashboard/occupancy-bar";
 import { TurmaStatusBadge, EnrollmentStatusBadge } from "@/components/shared/status-badge";
-import { PROFISSAO_LABELS } from "@/lib/enums";
+import { PROFISSAO_LABELS, TURMA_STATUS_LABELS } from "@/lib/enums";
 import type { TurmaStatus, EnrollmentStatus } from "@/lib/enums";
 import { formatDate } from "@/lib/format";
 import { apiFetch } from "@/lib/api-client";
@@ -55,6 +56,37 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const isOrganizador = userRole === "ORGANIZADOR";
+
+  const VALID_TRANSITIONS: Record<string, TurmaStatus[]> = {
+    RASCUNHO: ["PUBLICADA", "CANCELADA"],
+    PUBLICADA: ["INSCRICOES_ABERTAS", "RASCUNHO", "CANCELADA"],
+    INSCRICOES_ABERTAS: ["INSCRICOES_ENCERRADAS", "LOTADA", "CANCELADA"],
+    LOTADA: ["INSCRICOES_ENCERRADAS", "INSCRICOES_ABERTAS", "CANCELADA"],
+    INSCRICOES_ENCERRADAS: ["EM_ANDAMENTO", "CANCELADA"],
+    EM_ANDAMENTO: ["CONCLUIDA", "CANCELADA"],
+    CONCLUIDA: [],
+    CANCELADA: [],
+  };
+
+  const nextStatuses = VALID_TRANSITIONS[turma.status] || [];
+
+  async function handleStatusChange(newStatus: TurmaStatus) {
+    if (newStatus === "CANCELADA" && !confirm("Tem certeza que deseja cancelar esta turma?")) return;
+    setLoading(true);
+    try {
+      await apiFetch(`/api/turmas/${turma.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      toast.success(`Status alterado para ${TURMA_STATUS_LABELS[newStatus]}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao alterar status");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleInscrever() {
     setLoading(true);
@@ -113,6 +145,14 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         </div>
 
         <div className="flex gap-2">
+          {isOrganizador && (
+            <Link href={`/turmas/${turma.id}/editar`}>
+              <Button variant="outline" size="sm">
+                <Pencil className="mr-1 h-3 w-3" />
+                Editar
+              </Button>
+            </Link>
+          )}
           {canEnroll && (
             <Button onClick={handleInscrever} disabled={loading}>
               {turma.status === "LOTADA" ? "Entrar na fila" : "Inscrever-se"}
@@ -128,6 +168,36 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
           )}
         </div>
       </div>
+
+      {/* Status management (organizer only) */}
+      {isOrganizador && nextStatuses.length > 0 && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 pt-4">
+            <span className="text-sm font-medium text-[var(--text-secondary)]">Ações:</span>
+            {nextStatuses.filter((s) => s !== "CANCELADA").map((s) => (
+              <Button
+                key={s}
+                size="sm"
+                variant="outline"
+                disabled={loading}
+                onClick={() => handleStatusChange(s)}
+              >
+                {TURMA_STATUS_LABELS[s]}
+              </Button>
+            ))}
+            {nextStatuses.includes("CANCELADA") && (
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={loading}
+                onClick={() => handleStatusChange("CANCELADA")}
+              >
+                Cancelar Turma
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
