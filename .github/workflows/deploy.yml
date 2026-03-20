@@ -56,12 +56,16 @@ jobs:
             # Build
             pnpm build
 
+            # Copiar static assets para standalone (obrigatório)
+            cp -r .next/static .next/standalone/.next/static
+            cp -r public .next/standalone/public 2>/dev/null || true
+
             # Aplicar migrations (push para sync idempotente)
             pnpm drizzle-kit push --force
 
             # Restart com PM2
-            pm2 restart ${{ env.APP_NAME }} 2>/dev/null || \
-              pm2 start ecosystem.config.js --only ${{ env.APP_NAME }}
+            pm2 delete ${{ env.APP_NAME }} 2>/dev/null || true
+            pm2 start ecosystem.config.js --only ${{ env.APP_NAME }}
 
             pm2 save
 

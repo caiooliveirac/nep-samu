@@ -2,12 +2,12 @@ module.exports = {
   apps: [
     {
       name: "nep-samu",
-      script: "node_modules/.bin/next",
-      args: "start -p 3002",
+      script: ".next/standalone/server.js",
       cwd: "/home/ubuntu/nep-samu",
       env: {
         NODE_ENV: "production",
         PORT: 3002,
+        HOSTNAME: "0.0.0.0",
       },
     },
   ],
