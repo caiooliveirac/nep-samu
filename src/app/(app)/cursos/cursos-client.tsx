@@ -12,6 +12,7 @@ interface Curso {
   nome: string;
   descricao: string | null;
   cargaHoraria: number | null;
+  publicoAlvoDescritivo: string | null;
   categoria: { nome: string } | null;
 }
 
@@ -80,6 +81,7 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Nome</th>
                 <th className="px-5 py-3 font-medium">Categoria</th>
+                <th className="px-5 py-3 font-medium">Público-alvo</th>
                 <th className="px-5 py-3 font-medium">Carga Horária</th>
                 <th className="px-5 py-3 font-medium">Ações</th>
               </tr>
@@ -93,6 +95,9 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
                   <td className="px-5 py-3 font-medium">{curso.nome}</td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {curso.categoria?.nome || "—"}
+                  </td>
+                  <td className="px-5 py-3 text-[var(--text-secondary)]">
+                    {curso.publicoAlvoDescritivo || "—"}
                   </td>
                   <td
                     className="px-5 py-3 text-[var(--text-secondary)]"
