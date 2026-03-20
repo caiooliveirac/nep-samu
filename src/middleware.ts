@@ -3,20 +3,23 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export default auth((req: NextRequest & { auth: unknown }) => {
-  // Next.js strips basePath before middleware — pathname is already without /NEP
   const { pathname } = req.nextUrl;
   const session = req.auth as { user?: { role: string } } | null;
 
-  // Public paths (already basePath-stripped)
-  const publicPaths = ["/login", "/convite", "/api/auth", "/api/health"];
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
-  if (isPublic) return NextResponse.next();
+  // pathname includes basePath in Next.js 16 (e.g. "/NEP/painel")
+  const basePath = "/NEP";
+  const path = pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || "/"
+    : pathname;
 
-  // Not authenticated -> redirect to login
+  // Public paths (check against stripped path)
+  const publicPaths = ["/login", "/convite", "/api/auth", "/api/health"];
+  if (publicPaths.some((p) => path.startsWith(p))) return NextResponse.next();
+
+  // Not authenticated -> redirect to /NEP/login
   if (!session?.user) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("callbackUrl", pathname);
+    const loginUrl = new URL(`${basePath}/login`, req.url);
+    loginUrl.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(loginUrl);
   }
 
