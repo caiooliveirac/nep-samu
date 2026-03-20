@@ -7,6 +7,10 @@ export const PROFISSOES = [
   "TEC_ENFERMAGEM",
   "CONDUTOR",
   "TARM",
+  "RADIO_OPERADOR",
+  "ADMINISTRATIVO",
+  "FISIOTERAPEUTA",
+  "ASSISTENTE_SOCIAL",
   "OUTRO",
 ] as const;
 export type Profissao = (typeof PROFISSOES)[number];
@@ -17,6 +21,10 @@ export const PROFISSAO_LABELS: Record<Profissao, string> = {
   TEC_ENFERMAGEM: "Téc. Enfermagem",
   CONDUTOR: "Condutor(a)",
   TARM: "TARM",
+  RADIO_OPERADOR: "Rádio Operador",
+  ADMINISTRATIVO: "Administrativo",
+  FISIOTERAPEUTA: "Fisioterapeuta",
+  ASSISTENTE_SOCIAL: "Assist. Social",
   OUTRO: "Outro",
 };
 

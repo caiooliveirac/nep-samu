@@ -40,7 +40,7 @@ export const profissionalSchema = z.object({
   email: z.email("Email inválido"),
   cpf: z.string().regex(/^\d{11}$/, "CPF deve ter 11 dígitos"),
   telefone: z.string().optional(),
-  profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "OUTRO"]),
+  profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
 });
 
 export const unidadeSchema = z.object({

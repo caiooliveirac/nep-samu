@@ -31,6 +31,10 @@ export const profissaoEnum = pgEnum("profissao", [
   "TEC_ENFERMAGEM",
   "CONDUTOR",
   "TARM",
+  "RADIO_OPERADOR",
+  "ADMINISTRATIVO",
+  "FISIOTERAPEUTA",
+  "ASSISTENTE_SOCIAL",
   "OUTRO",
 ]);
 
