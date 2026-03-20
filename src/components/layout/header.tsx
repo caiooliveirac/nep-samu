@@ -1,11 +1,20 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { useEffect, useState } from "react";
 import { Bell, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
 
 export function Header() {
   const { data: session } = useSession();
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    apiFetch<{ count: number }>("/api/notificacoes/unread")
+      .then((data) => setUnread(data.count))
+      .catch(() => {});
+  }, []);
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-secondary)] px-6">
@@ -15,9 +24,11 @@ export function Header() {
         {/* Notification bell */}
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-4 w-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--samu-orange)] text-[10px] font-bold text-white">
-            3
-          </span>
+          {unread > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--samu-orange)] text-[10px] font-bold text-white">
+              {unread > 9 ? "9+" : unread}
+            </span>
+          )}
         </Button>
 
         {/* User */}

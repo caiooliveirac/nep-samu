@@ -12,11 +12,21 @@ import type { Role } from "@/lib/enums";
 
 export async function GET() {
   try {
+    const session = await auth();
+    const role = (session?.user?.role as Role) || "PROFISSIONAL";
+
+    // Organizadores veem tudo, demais não veem RASCUNHO
     const allTurmas = await db.query.turmas.findMany({
       with: { curso: true },
       orderBy: [desc(turmas.dataInicio)],
     });
-    return apiSuccess(allTurmas);
+
+    const filtered =
+      role === "ORGANIZADOR"
+        ? allTurmas
+        : allTurmas.filter((t) => t.status !== "RASCUNHO");
+
+    return apiSuccess(filtered);
   } catch (error) {
     return apiError(error);
   }

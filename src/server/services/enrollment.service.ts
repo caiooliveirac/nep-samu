@@ -2,6 +2,7 @@ import { db } from "@/server/db";
 import {
   enrollments,
   turmas,
+  users,
   vinculos,
   cotas,
   turmasMunicipios,
@@ -53,10 +54,7 @@ export async function createEnrollment(
 
   // 3. Verificar elegibilidade de profissão
   const user = await db.query.users.findFirst({
-    where: eq(
-      (await import("@/server/db/schema")).users.id,
-      input.userId,
-    ),
+    where: eq(users.id, input.userId),
   });
 
   if (!user?.profissao) {
@@ -260,26 +258,48 @@ async function checkQuotaAvailability(
   if (!quota) return true; // Sem cota definida = sem restrição
 
   // Contar inscritos na cota
-  const condition =
-    modoCota === "POR_UNIDADE"
-      ? eq(enrollments.unidadeId, unidadeId)
-      : undefined; // Para município, precisaria de join
+  let usedSlots;
 
-  const usedSlots = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(enrollments)
-    .where(
-      and(
-        eq(enrollments.turmaId, turmaId),
-        condition,
-        inArray(enrollments.status, [
-          "INSCRITO",
-          "PROMOVIDO",
-          "CONFIRMADO",
-          "PRESENTE",
-        ]),
-      ),
-    );
+  if (modoCota === "POR_UNIDADE") {
+    usedSlots = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(enrollments)
+      .where(
+        and(
+          eq(enrollments.turmaId, turmaId),
+          eq(enrollments.unidadeId, unidadeId),
+          inArray(enrollments.status, [
+            "INSCRITO",
+            "PROMOVIDO",
+            "CONFIRMADO",
+            "PRESENTE",
+          ]),
+        ),
+      );
+  } else {
+    // POR_MUNICIPIO: join com unidades para filtrar pelo municipio da unidade
+    const unidade = await db.query.unidades.findFirst({
+      where: eq(unidades.id, unidadeId),
+    });
+    if (!unidade) return false;
+
+    usedSlots = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(enrollments)
+      .innerJoin(unidades, eq(enrollments.unidadeId, unidades.id))
+      .where(
+        and(
+          eq(enrollments.turmaId, turmaId),
+          eq(unidades.municipioId, unidade.municipioId),
+          inArray(enrollments.status, [
+            "INSCRITO",
+            "PROMOVIDO",
+            "CONFIRMADO",
+            "PRESENTE",
+          ]),
+        ),
+      );
+  }
 
   const used = Number(usedSlots[0].count);
 
