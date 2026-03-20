@@ -20,6 +20,7 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/painel";
+  const authError = searchParams.get("error");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -64,6 +65,11 @@ function LoginForm() {
         </div>
 
         {/* Form */}
+        {authError && (
+          <div className="rounded-md bg-red-900/30 border border-red-700/50 p-3 text-sm text-red-300">
+            Erro de autenticação. Tente novamente.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
