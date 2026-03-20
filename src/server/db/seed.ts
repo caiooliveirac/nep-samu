@@ -86,9 +86,7 @@ async function seed() {
   const hash = await bcrypt.hash("123456", 10);
 
   const organizadorData = [
-    { nome: "Admin NEP", email: "admin@nep.samu.ba.gov.br", role: "ORGANIZADOR" as const, passwordHash: hash },
-    { nome: "Maria Organizadora", email: "maria.org@nep.samu.ba.gov.br", role: "ORGANIZADOR" as const, passwordHash: hash },
-    { nome: "João Organizador", email: "joao.org@nep.samu.ba.gov.br", role: "ORGANIZADOR" as const, passwordHash: hash },
+    { nome: "Organizadora Demo", email: "organizador@example.com", role: "ORGANIZADOR" as const, passwordHash: hash },
   ];
 
   const insertedOrgs = await db
@@ -98,12 +96,15 @@ async function seed() {
   console.log(`✅ ${insertedOrgs.length} organizadores inseridos`);
 
   // ══════ Coordenadores ══════
-  const coordenadorData = insertedUnidades.map((u, i) => ({
-    nome: `Coord. ${u.nome.replace("SAMU 192 ", "").replace("UPA ", "")}`,
-    email: `coord${i + 1}@nep.samu.ba.gov.br`,
-    role: "COORDENADOR" as const,
-    passwordHash: hash,
-  }));
+  const coordenadorData = [
+    { nome: "Coordenador Demo", email: "coordenador@example.com", role: "COORDENADOR" as const, passwordHash: hash },
+    ...insertedUnidades.slice(1).map((u, i) => ({
+      nome: `Coord. ${u.nome.replace("SAMU 192 ", "").replace("UPA ", "")}`,
+      email: `coord${i + 2}@nep.samu.ba.gov.br`,
+      role: "COORDENADOR" as const,
+      passwordHash: hash,
+    })),
+  ];
 
   const insertedCoords = await db
     .insert(users)
@@ -129,8 +130,17 @@ async function seed() {
   ];
   const sobrenomes = ["Silva", "Santos", "Oliveira", "Souza", "Lima", "Pereira", "Costa", "Reis", "Almeida", "Ferreira"];
 
-  const profissionalData = [];
-  for (let i = 0; i < 100; i++) {
+  const profissionalData: Array<{
+    nome: string;
+    email: string;
+    cpf?: string;
+    role: "PROFISSIONAL";
+    profissao: typeof profissoes[number];
+    passwordHash: string;
+  }> = [
+    { nome: "Profissional Demo", email: "profissional@example.com", role: "PROFISSIONAL", profissao: "MEDICO", passwordHash: hash },
+  ];
+  for (let i = 0; i < 99; i++) {
     const nome = nomes[i % nomes.length];
     const sobrenome = sobrenomes[Math.floor(i / nomes.length) % sobrenomes.length];
     const profissao = profissoes[i % profissoes.length];
@@ -414,10 +424,10 @@ async function seed() {
   console.log(`✅ ${notifValues.length} notificações inseridas`);
 
   console.log("\n🎉 Seed concluído com sucesso!");
-  console.log("\n📋 Credenciais de acesso:");
-  console.log("  Organizador: admin@nep.samu.ba.gov.br / 123456");
-  console.log("  Coordenador: coord1@nep.samu.ba.gov.br / 123456");
-  console.log("  Profissional: prof1@nep.samu.ba.gov.br / 123456");
+  console.log("\n📋 Credenciais de acesso (senha: 123456):");
+  console.log("  Organizador:  organizador@example.com");
+  console.log("  Coordenador:  coordenador@example.com");
+  console.log("  Profissional: profissional@example.com");
 
   process.exit(0);
 }
