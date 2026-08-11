@@ -11,16 +11,16 @@ const buttonVariants = cva(
         default:
           "bg-[var(--samu-blue)] text-white hover:bg-[var(--samu-blue-light)]",
         destructive:
-          "bg-[var(--status-danger)] text-white hover:bg-[var(--status-danger)]/80",
+          "bg-[var(--solid-danger)] text-white hover:bg-[var(--status-danger)]",
         outline:
           "border border-[var(--border-default)] bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)]",
         secondary:
           "bg-[var(--bg-tertiary)] text-[var(--text-primary)] hover:bg-[var(--bg-surface)]",
         ghost:
           "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] hover:text-[var(--text-primary)]",
-        link: "text-[var(--samu-blue-light)] underline-offset-4 hover:underline",
+        link: "text-[var(--link)] underline-offset-4 hover:underline",
         orange:
-          "bg-[var(--samu-orange)] text-white hover:bg-[var(--samu-orange-light)]",
+          "bg-[var(--solid-orange)] text-white hover:bg-[var(--samu-orange)]",
       },
       size: {
         default: "h-9 px-4 py-2 rounded-md",

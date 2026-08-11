@@ -407,8 +407,8 @@ export function ProfissionaisClient({
                     <span
                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
                         u.ativo
-                          ? "bg-[var(--status-success)] text-white"
-                          : "bg-[var(--status-neutral)] text-white"
+                          ? "bg-[var(--solid-success)] text-white"
+                          : "bg-[var(--solid-neutral)] text-white"
                       }`}
                     >
                       {u.ativo ? "Ativo" : "Inativo"}
@@ -517,7 +517,7 @@ export function ProfissionaisClient({
                   placeholder="Mínimo 6 caracteres"
                 />
               </div>
-              {cadError && <p className="text-sm text-red-500">{cadError}</p>}
+              {cadError && <p className="text-sm text-[var(--status-danger-fg)]">{cadError}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowCadastrar(false)}>
                   Cancelar
@@ -586,14 +586,14 @@ export function ProfissionaisClient({
                     className="shrink-0"
                   >
                     {copied ? (
-                      <Check className="h-4 w-4 text-green-500" />
+                      <Check className="h-4 w-4 text-[var(--status-success-fg)]" />
                     ) : (
                       <Copy className="h-4 w-4 text-[var(--text-muted)]" />
                     )}
                   </button>
                 </div>
                 {copied && (
-                  <p className="text-sm text-green-600">Link copiado!</p>
+                  <p className="text-sm text-[var(--status-success-fg)]">Link copiado!</p>
                 )}
                 <p className="text-xs text-[var(--text-muted)]">
                   O link é válido por 30 dias. Compartilhe com os profissionais
@@ -658,11 +658,11 @@ export function ProfissionaisClient({
                             </td>
                           )}
                           <td className="px-3 py-2">
-                            <span className={expirado ? "text-red-500" : ""}>
+                            <span className={expirado ? "text-[var(--status-danger-fg)]" : ""}>
                               {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
                             </span>
                             {expirado && (
-                              <Badge variant="outline" className="ml-1 text-red-500 border-red-300">
+                              <Badge variant="outline" className="ml-1 text-[var(--status-danger-fg)] border-[var(--status-danger-fg)]">
                                 Expirado
                               </Badge>
                             )}

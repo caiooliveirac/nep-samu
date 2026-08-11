@@ -92,7 +92,7 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b border-[var(--sidebar-border)] px-4">
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--samu-orange)] text-sm font-bold text-white">
+        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--solid-orange)] text-sm font-bold text-white">
           N
         </div>
         {!collapsed && (

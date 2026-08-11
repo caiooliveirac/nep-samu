@@ -175,8 +175,8 @@ export function UnidadesClient({ unidades }: { unidades: Unidade[] }) {
                     <span
                       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
                         u.ativo
-                          ? "bg-[var(--status-success)] text-white"
-                          : "bg-[var(--status-neutral)] text-white"
+                          ? "bg-[var(--solid-success)] text-white"
+                          : "bg-[var(--solid-neutral)] text-white"
                       }`}
                     >
                       {u.ativo ? "Ativo" : "Inativo"}

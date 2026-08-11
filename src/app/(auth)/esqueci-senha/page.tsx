@@ -41,7 +41,7 @@ export default function EsqueciSenhaPage() {
         </div>
         <Link
           href="/login"
-          className="block text-center text-sm text-[var(--samu-orange)] hover:underline"
+          className="block text-center text-sm text-[var(--link)] hover:underline"
         >
           Voltar para o login
         </Link>
@@ -71,7 +71,7 @@ export default function EsqueciSenhaPage() {
 
       <Link
         href="/login"
-        className="block text-center text-sm text-[var(--samu-orange)] hover:underline"
+        className="block text-center text-sm text-[var(--link)] hover:underline"
       >
         Voltar para o login
       </Link>

@@ -26,7 +26,7 @@ export default async function ConvitePage({
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)] p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--samu-orange)]">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--solid-orange)]">
             <span className="text-xl font-bold text-white">N</span>
           </div>
           <h1 className="font-display text-2xl font-bold text-[var(--text-primary)]">

@@ -53,7 +53,7 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
   if (success) {
     return (
       <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6 text-center">
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--status-success)]">
+        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--solid-success)]">
           <span className="text-lg text-white">✓</span>
         </div>
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -165,7 +165,7 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
       </div>
 
       {error && (
-        <p className="text-sm font-medium text-red-500">{error}</p>
+        <p className="text-sm font-medium text-[var(--status-danger-fg)]">{error}</p>
       )}
 
       <Button type="submit" className="w-full" disabled={loading}>

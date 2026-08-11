@@ -51,7 +51,7 @@ export default async function RelatoriosPage() {
             className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-5 transition-colors hover:bg-[var(--bg-tertiary)] cursor-pointer"
           >
             <div className="mb-3 inline-flex rounded-md bg-[var(--bg-tertiary)] p-2">
-              <BarChart3 className="h-5 w-5 text-[var(--samu-blue-light)]" />
+              <BarChart3 className="h-5 w-5 text-[var(--link)]" />
             </div>
             <h3 className="font-display text-sm font-semibold">
               {report.title}

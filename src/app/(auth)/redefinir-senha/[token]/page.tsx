@@ -67,13 +67,13 @@ export default function RedefinirSenhaPage({
   if (estado === "invalido") {
     return (
       <AuthShell titulo="Link inválido" subtitulo="NEP SAMU">
-        <div className="rounded-md border border-red-700/50 bg-red-900/30 p-3 text-sm text-red-300">
+        <div className="caixa-erro rounded-md p-3 text-sm">
           Este link é inválido ou já expirou. Peça um novo em &ldquo;Esqueci
           minha senha&rdquo;.
         </div>
         <Link
           href="/esqueci-senha"
-          className="block text-center text-sm text-[var(--samu-orange)] hover:underline"
+          className="block text-center text-sm text-[var(--link)] hover:underline"
         >
           Pedir um novo link
         </Link>
