@@ -68,7 +68,7 @@ export function OrganizerDashboard() {
   return (
     <div className="space-y-6">
       {/* Métricas */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div data-tour="metricas" className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricsCard
           title="Cursos Ativos"
           value={metrics?.cursosAtivos ?? 0}
@@ -107,7 +107,7 @@ export function OrganizerDashboard() {
       </div>
 
       {/* Turmas ativas */}
-      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
+      <div data-tour="turmas-ativas" className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
         <div className="border-b border-[var(--border-default)] px-5 py-4">
           <h2 className="font-display text-base font-semibold">
             Turmas Ativas

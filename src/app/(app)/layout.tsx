@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth/config";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { TourPainel } from "@/components/tour-painel";
 
 export default async function AppLayout({
   children,
@@ -21,6 +22,7 @@ export default async function AppLayout({
         <main className="flex-1 overflow-y-auto bg-[var(--bg-primary)] p-6">
           {children}
         </main>
+        <TourPainel />
       </div>
     </div>
   );

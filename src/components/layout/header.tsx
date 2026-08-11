@@ -2,9 +2,10 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Bell, LogOut, User } from "lucide-react";
+import { Bell, CircleQuestionMark, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { EVENTO_TOUR } from "@/components/tour-painel";
 import { apiFetch } from "@/lib/api-client";
 
 export function Header({
@@ -28,10 +29,22 @@ export function Header({
       <div />
 
       <div className="flex items-center gap-3">
-        <ThemeToggle />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Rever o tutorial do painel"
+          title="Rever o tutorial"
+          onClick={() => window.dispatchEvent(new Event(EVENTO_TOUR))}
+        >
+          <CircleQuestionMark className="h-4 w-4" />
+        </Button>
+
+        <span data-tour="tema">
+          <ThemeToggle />
+        </span>
 
         {/* Notification bell */}
-        <Button variant="ghost" size="icon" className="relative">
+        <Button data-tour="notificacoes" variant="ghost" size="icon" className="relative">
           <Bell className="h-4 w-4" />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--solid-orange)] text-[10px] font-bold text-white">

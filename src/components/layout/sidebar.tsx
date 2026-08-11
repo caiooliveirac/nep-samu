@@ -106,7 +106,7 @@ export function Sidebar({ role: roleDoServidor }: { role: string }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 px-2 py-3">
+      <nav data-tour="menu" className="flex-1 space-y-1 px-2 py-3">
         {filteredItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
