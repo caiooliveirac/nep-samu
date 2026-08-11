@@ -32,6 +32,7 @@ interface Turma {
   filaEsperaHabilitada: boolean;
   profissoesElegiveis: string[];
   escopoElegibilidade: string;
+  publicoExterno: string | null;
   inscricaoInicio: string | Date;
   inscricaoFim: string | Date;
   prazoConfirmacaoDias: number;
@@ -49,6 +50,8 @@ export function EditarTurmaForm({ turma, cursos }: { turma: Turma; cursos: Curso
   const [profissoesSelecionadas, setProfissoesSelecionadas] = useState<string[]>(
     turma.profissoesElegiveis || [...PROFISSOES],
   );
+
+  const [publicoExterno, setPublicoExterno] = useState(turma.publicoExterno ?? "");
 
   function toggleProfissao(p: string) {
     setProfissoesSelecionadas((prev) =>
@@ -78,6 +81,7 @@ export function EditarTurmaForm({ turma, cursos }: { turma: Turma; cursos: Curso
         redistribuirOciosas: false,
         filaEsperaHabilitada: true,
         profissoesElegiveis: profissoesSelecionadas,
+        publicoExterno: publicoExterno.trim() || undefined,
         escopoElegibilidade: "REGIONAL_INTEIRA",
         inscricaoInicio: `${form.get("inscricaoInicio")}T00:00:00.000Z`,
         inscricaoFim: `${form.get("inscricaoFim")}T23:59:59.000Z`,
@@ -250,16 +254,39 @@ export function EditarTurmaForm({ turma, cursos }: { turma: Turma; cursos: Curso
             </button>
           ))}
         </div>
-        {profissoesSelecionadas.length === 0 && (
+        {profissoesSelecionadas.length === 0 && !publicoExterno.trim() && (
           <p className="text-xs text-[var(--status-danger)]">
-            Selecione ao menos uma profissão
+            Selecione ao menos uma profissão, ou descreva o público externo
+            abaixo
           </p>
         )}
       </div>
 
+      {/* Público de fora do SAMU */}
+      <div className="space-y-2">
+        <Label htmlFor="publico-externo">Público externo</Label>
+        <Input
+          id="publico-externo"
+          value={publicoExterno}
+          onChange={(e) => setPublicoExterno(e.target.value)}
+          placeholder="Ex.: SAMU Solidário — Medicina Valença"
+        />
+        <p className="text-xs text-[var(--text-muted)]">
+          Preencha só quando a turma for para gente de fora do SAMU. Nesse caso
+          pode deixar as profissões sem marcar — a turma não aparece para os
+          profissionais.
+        </p>
+      </div>
+
       {/* Actions */}
       <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={loading || profissoesSelecionadas.length === 0}>
+        <Button
+          type="submit"
+          disabled={
+            loading ||
+            (profissoesSelecionadas.length === 0 && !publicoExterno.trim())
+          }
+        >
           {loading ? "Salvando..." : "Salvar Alterações"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>

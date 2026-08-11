@@ -263,6 +263,11 @@ export const turmas = pgTable(
       .notNull()
       .default("REGIONAL_INTEIRA"),
 
+    // Turma dada para gente de fora do SAMU (SAMU Solidário, empresa parceira,
+    // rede municipal de ensino). O enum de profissão só cobre cargos do SAMU,
+    // então esse público não tinha onde ser registrado.
+    publicoExterno: text("publico_externo"),
+
     inscricaoInicio: timestamp("inscricao_inicio", {
       withTimezone: true,
     }).notNull(),

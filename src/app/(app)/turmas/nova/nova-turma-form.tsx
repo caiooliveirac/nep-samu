@@ -25,6 +25,8 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
     ...PROFISSOES,
   ]);
 
+  const [publicoExterno, setPublicoExterno] = useState("");
+
   function toggleProfissao(p: string) {
     setProfissoesSelecionadas((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
@@ -53,6 +55,7 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
         redistribuirOciosas: false,
         filaEsperaHabilitada: true,
         profissoesElegiveis: profissoesSelecionadas,
+        publicoExterno: publicoExterno.trim() || undefined,
         escopoElegibilidade: "REGIONAL_INTEIRA",
         inscricaoInicio: `${form.get("inscricaoInicio")}T00:00:00.000Z`,
         inscricaoFim: `${form.get("inscricaoFim")}T23:59:59.000Z`,
@@ -218,16 +221,39 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
             </button>
           ))}
         </div>
-        {profissoesSelecionadas.length === 0 && (
+        {profissoesSelecionadas.length === 0 && !publicoExterno.trim() && (
           <p className="text-xs text-[var(--status-danger)]">
-            Selecione ao menos uma profissão
+            Selecione ao menos uma profissão, ou descreva o público externo
+            abaixo
           </p>
         )}
       </div>
 
+      {/* Público de fora do SAMU */}
+      <div className="space-y-2">
+        <Label htmlFor="publico-externo">Público externo</Label>
+        <Input
+          id="publico-externo"
+          value={publicoExterno}
+          onChange={(e) => setPublicoExterno(e.target.value)}
+          placeholder="Ex.: SAMU Solidário — Medicina Valença"
+        />
+        <p className="text-xs text-[var(--text-muted)]">
+          Preencha só quando a turma for para gente de fora do SAMU (parceria,
+          empresa, rede de ensino). Nesse caso pode deixar as profissões sem
+          marcar — a turma não aparece para os profissionais.
+        </p>
+      </div>
+
       {/* Actions */}
       <div className="flex gap-3 pt-2">
-        <Button type="submit" disabled={loading || profissoesSelecionadas.length === 0}>
+        <Button
+          type="submit"
+          disabled={
+            loading ||
+            (profissoesSelecionadas.length === 0 && !publicoExterno.trim())
+          }
+        >
           {loading ? "Criando..." : "Criar Turma"}
         </Button>
         <Button type="button" variant="outline" onClick={() => router.back()}>

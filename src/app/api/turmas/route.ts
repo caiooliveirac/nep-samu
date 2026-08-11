@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         filaEsperaHabilitada: parsed.filaEsperaHabilitada,
         profissoesElegiveis: parsed.profissoesElegiveis,
         escopoElegibilidade: parsed.escopoElegibilidade,
+        publicoExterno: parsed.publicoExterno ?? null,
         inscricaoInicio: new Date(parsed.inscricaoInicio),
         inscricaoFim: new Date(parsed.inscricaoFim),
         prazoConfirmacaoDias: parsed.prazoConfirmacaoDias,

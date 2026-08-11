@@ -43,6 +43,7 @@ interface Props {
     filaEsperaHabilitada: boolean;
     profissoesElegiveis: string[];
     escopoElegibilidade: string;
+    publicoExterno: string | null;
     status: TurmaStatus;
     prazoConfirmacaoDias: number;
     curso: { id: string; nome: string; cargaHoraria: number | null };
@@ -347,9 +348,23 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
           <CardTitle>Elegibilidade</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
+          {turma.publicoExterno && (
+            <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3">
+              <p className="text-sm font-medium">Turma para público externo</p>
+              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                {turma.publicoExterno} — não aparece para os profissionais do
+                SAMU.
+              </p>
+            </div>
+          )}
           <div>
             <span className="text-sm text-[var(--text-secondary)]">Profissões: </span>
             <div className="mt-1 flex flex-wrap gap-1">
+              {turma.profissoesElegiveis.length === 0 && (
+                <span className="text-sm text-[var(--text-muted)]">
+                  nenhuma — turma de público externo
+                </span>
+              )}
               {turma.profissoesElegiveis.map((p) => (
                 <Badge key={p} variant="neutral">
                   {PROFISSAO_LABELS[p as keyof typeof PROFISSAO_LABELS] || p}

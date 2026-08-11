@@ -28,12 +28,22 @@ export const turmaSchema = z.object({
   redistribuirOciosas: z.boolean().default(false),
   dataRedistribuicao: z.string().optional(),
   filaEsperaHabilitada: z.boolean().default(true),
-  profissoesElegiveis: z.array(z.string()).min(1, "Selecione ao menos uma profissão"),
+  profissoesElegiveis: z.array(z.string()),
+  publicoExterno: z.string().optional(),
   escopoElegibilidade: z.enum(["REGIONAL_INTEIRA", "MUNICIPIOS_ESPECIFICOS", "UNIDADES_ESPECIFICAS"]),
   inscricaoInicio: z.string().min(1, "Data de abertura obrigatória"),
   inscricaoFim: z.string().min(1, "Data de encerramento obrigatória"),
   prazoConfirmacaoDias: z.number().int().positive().default(3),
-});
+})
+  // Ou a turma é para profissões do SAMU, ou é para um público de fora — mas
+  // não pode ficar sem nenhum dos dois, senão ninguém sabe para quem ela é.
+  .refine(
+    (t) => t.profissoesElegiveis.length > 0 || !!t.publicoExterno?.trim(),
+    {
+      message: "Escolha ao menos uma profissão ou descreva o público externo",
+      path: ["profissoesElegiveis"],
+    },
+  );
 
 export const profissionalSchema = z.object({
   nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
