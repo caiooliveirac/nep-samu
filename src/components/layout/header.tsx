@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { apiFetch } from "@/lib/api-client";
 
-export function Header() {
+export function Header({
+  nome,
+  role,
+}: {
+  nome: string | null;
+  role: string;
+}) {
   const { data: session } = useSession();
   const [unread, setUnread] = useState(0);
 
@@ -41,10 +47,10 @@ export function Header() {
           </div>
           <div className="hidden md:block">
             <p className="text-sm font-medium text-[var(--text-primary)]">
-              {session?.user?.name || "Usuário"}
+              {session?.user?.name ?? nome ?? "Usuário"}
             </p>
             <p className="text-xs text-[var(--text-muted)]">
-              {session?.user?.role || ""}
+              {session?.user?.role ?? role}
             </p>
           </div>
         </div>

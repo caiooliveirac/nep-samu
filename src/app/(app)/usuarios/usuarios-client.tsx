@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, Copy, KeyRound, Pencil, Search, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, KeyRound, Pencil, Search, UserCog, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
+import { PROFISSOES, PROFISSAO_LABELS, ROLES, type Profissao, type Role } from "@/lib/enums";
 
 interface Usuario {
   id: string;
@@ -17,6 +19,14 @@ interface Usuario {
   ativo: boolean;
   mustChangePassword: boolean;
   emailRecebe: boolean;
+  unidadeId: string | null;
+  unidadeNome: string | null;
+}
+
+interface Unidade {
+  id: string;
+  nome: string;
+  municipio: string | null;
 }
 
 const ROTULO_ROLE: Record<string, string> = {
@@ -27,9 +37,11 @@ const ROTULO_ROLE: Record<string, string> = {
 
 export function UsuariosClient({
   usuarios: iniciais,
+  unidades,
   meuId,
 }: {
   usuarios: Usuario[];
+  unidades: Unidade[];
   meuId: string;
 }) {
   const [usuarios, setUsuarios] = useState(iniciais);
@@ -42,6 +54,7 @@ export function UsuariosClient({
     senha: string;
   } | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [papelDe, setPapelDe] = useState<Usuario | null>(null);
 
   const filtrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -101,6 +114,31 @@ export function UsuariosClient({
       toast.error(
         error instanceof Error ? error.message : "Não foi possível resetar.",
       );
+    }
+  }
+
+  async function salvarPapel(
+    u: Usuario,
+    role: Role,
+    unidadeId: string | null,
+    profissao: Profissao | null,
+  ) {
+    setSalvando(true);
+    try {
+      await apiFetch(`/api/usuarios/${u.id}/papel`, {
+        method: "PUT",
+        body: JSON.stringify({ role, unidadeId, profissao }),
+      });
+      const lista = await apiFetch<Usuario[]>("/api/usuarios");
+      setUsuarios(lista);
+      setPapelDe(null);
+      toast.success("Papel atualizado.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível trocar o papel.",
+      );
+    } finally {
+      setSalvando(false);
     }
   }
 
@@ -202,7 +240,15 @@ export function UsuariosClient({
                   )}
                 </td>
 
-                <td className="px-4 py-3">{ROTULO_ROLE[u.role] ?? u.role}</td>
+                <td className="px-4 py-3">
+                  <div>{ROTULO_ROLE[u.role] ?? u.role}</div>
+                  {u.unidadeNome && (
+                    <div className="text-xs text-[var(--text-muted)]">
+                      {u.role === "COORDENADOR" ? "coordena " : ""}
+                      {u.unidadeNome}
+                    </div>
+                  )}
+                </td>
 
                 <td className="px-4 py-3">
                   {!u.ativo ? (
@@ -230,6 +276,14 @@ export function UsuariosClient({
                     <Button
                       size="sm"
                       variant="ghost"
+                      onClick={() => setPapelDe(u)}
+                      title="Trocar papel e unidade"
+                    >
+                      <UserCog className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => resetar(u)}
                       title="Gerar senha provisória"
                     >
@@ -253,6 +307,18 @@ export function UsuariosClient({
           </tbody>
         </table>
       </div>
+
+      {papelDe && (
+        <ModalPapel
+          usuario={papelDe}
+          unidades={unidades}
+          salvando={salvando}
+          onCancelar={() => setPapelDe(null)}
+          onSalvar={(role, unidadeId, profissao) =>
+            salvarPapel(papelDe, role, unidadeId, profissao)
+          }
+        />
+      )}
 
       {senhaGerada && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -295,6 +361,128 @@ export function UsuariosClient({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+const ROTULO_PAPEL: Record<Role, string> = {
+  ORGANIZADOR: "Organizador — administra o sistema inteiro",
+  COORDENADOR: "Coordenador — responde por uma unidade",
+  PROFISSIONAL: "Profissional — se inscreve nas turmas",
+};
+
+function ModalPapel({
+  usuario,
+  unidades,
+  salvando,
+  onCancelar,
+  onSalvar,
+}: {
+  usuario: Usuario;
+  unidades: Unidade[];
+  salvando: boolean;
+  onCancelar: () => void;
+  onSalvar: (
+    role: Role,
+    unidadeId: string | null,
+    profissao: Profissao | null,
+  ) => void;
+}) {
+  const [role, setRole] = useState<Role>(usuario.role as Role);
+  const [unidadeId, setUnidadeId] = useState<string>(usuario.unidadeId ?? "");
+  const [profissao, setProfissao] = useState<string>(usuario.profissao ?? "");
+
+  const precisaUnidade = role !== "ORGANIZADOR";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+        <h2 className="font-display text-lg font-bold text-[var(--text-primary)]">
+          Papel de {usuario.nome}
+        </h2>
+
+        <div className="space-y-2">
+          {ROLES.map((r) => (
+            <label
+              key={r}
+              className="flex cursor-pointer items-start gap-3 rounded-md border border-[var(--border-default)] p-3 text-sm hover:bg-[var(--bg-tertiary)]"
+            >
+              <input
+                type="radio"
+                name="papel"
+                checked={role === r}
+                onChange={() => setRole(r)}
+                className="mt-1"
+              />
+              <span className="text-[var(--text-secondary)]">
+                {ROTULO_PAPEL[r]}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {precisaUnidade && (
+          <div className="space-y-2">
+            <Label htmlFor="unidade">
+              {role === "COORDENADOR" ? "Unidade que vai coordenar" : "Unidade"}
+            </Label>
+            <select
+              id="unidade"
+              value={unidadeId}
+              onChange={(e) => setUnidadeId(e.target.value)}
+              className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]"
+            >
+              <option value="">Selecione…</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                  {u.municipio ? ` — ${u.municipio}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {role === "PROFISSIONAL" && (
+          <div className="space-y-2">
+            <Label htmlFor="profissao">Profissão</Label>
+            <select
+              id="profissao"
+              value={profissao}
+              onChange={(e) => setProfissao(e.target.value)}
+              className="w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm text-[var(--text-primary)]"
+            >
+              <option value="">Não informada</option>
+              {PROFISSOES.map((p) => (
+                <option key={p} value={p}>
+                  {PROFISSAO_LABELS[p]}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            className="flex-1"
+            disabled={salvando || (precisaUnidade && !unidadeId)}
+            onClick={() =>
+              onSalvar(
+                role,
+                precisaUnidade ? unidadeId : null,
+                role === "PROFISSIONAL" && profissao
+                  ? (profissao as Profissao)
+                  : null,
+              )
+            }
+          >
+            {salvando ? "Salvando..." : "Salvar"}
+          </Button>
+          <Button variant="ghost" onClick={onCancelar} disabled={salvando}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

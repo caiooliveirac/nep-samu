@@ -73,11 +73,14 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ role: roleDoServidor }: { role: string }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
-  const role = session?.user?.role;
+  // O papel do servidor manda; a sessão do cliente só serve para refletir uma
+  // troca de papel sem recarregar a página. Sem esse fallback o menu encolhe a
+  // cada navegação, enquanto o useSession ainda está carregando.
+  const role = session?.user?.role ?? roleDoServidor;
 
   const filteredItems = navItems.filter(
     (item) => !item.roles || (role && item.roles.includes(role)),

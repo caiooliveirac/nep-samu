@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/server/db";
-import { users } from "@/server/db/schema";
+import type { Profissao, Role } from "@/lib/enums";
+import { users, vinculos } from "@/server/db/schema";
 import { logAudit } from "@/server/services/audit.service";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/lib/errors";
 
@@ -72,7 +73,7 @@ export async function listarUsuarios() {
 async function carregar(userId: string) {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
-    columns: { id: true, nome: true, email: true, role: true, ativo: true },
+    columns: { id: true, nome: true, email: true, role: true, ativo: true, profissao: true },
   });
   if (!user) throw new NotFoundError("Usuário");
   return user;
@@ -152,4 +153,107 @@ export async function resetarSenha(
   });
 
   return { nome: alvo.nome, email: alvo.email, senhaProvisoria };
+}
+
+/**
+ * Troca o papel da pessoa e, quando o papel exige lugar, o vínculo com a
+ * unidade. Coordenador é sempre coordenador DE uma unidade: o vínculo marcado
+ * com `isCoordenador` é o que diz de onde.
+ *
+ * Duas travas, ambas para ninguém se trancar do lado de fora: o organizador não
+ * muda o próprio papel, e o último organizador ativo não pode ser rebaixado.
+ */
+export async function trocarPapel(
+  adminId: string,
+  userId: string,
+  dados: { role: Role; unidadeId?: string | null; profissao?: Profissao | null },
+  ctx: { ip?: string; userAgent?: string } = {},
+) {
+  const alvo = await carregar(userId);
+
+  if (adminId === userId && dados.role !== "ORGANIZADOR") {
+    throw new ValidationError(
+      "Você não pode rebaixar a própria conta — peça a outro organizador.",
+    );
+  }
+
+  if (alvo.role === "ORGANIZADOR" && dados.role !== "ORGANIZADOR") {
+    const organizadores = await db.query.users.findMany({
+      where: eq(users.role, "ORGANIZADOR"),
+      columns: { id: true, ativo: true },
+    });
+    const outrosAtivos = organizadores.filter(
+      (u) => u.id !== userId && u.ativo,
+    ).length;
+    if (outrosAtivos === 0) {
+      throw new ValidationError(
+        "Este é o único organizador ativo — promova outra pessoa antes de rebaixá-lo.",
+      );
+    }
+  }
+
+  if (dados.role !== "ORGANIZADOR" && !dados.unidadeId) {
+    throw new ValidationError(
+      dados.role === "COORDENADOR"
+        ? "Escolha a unidade que a pessoa vai coordenar."
+        : "Escolha a unidade da pessoa.",
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({
+        role: dados.role,
+        profissao:
+          dados.role === "PROFISSIONAL" ? (dados.profissao ?? null) : alvo.profissao,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+
+    if (!dados.unidadeId) return;
+
+    // Só um vínculo por vez carrega a coordenação: sem isto, quem muda de
+    // unidade continuaria coordenando a anterior.
+    await tx
+      .update(vinculos)
+      .set({ isCoordenador: false, updatedAt: new Date() })
+      .where(eq(vinculos.userId, userId));
+
+    const existente = await tx.query.vinculos.findFirst({
+      where: and(
+        eq(vinculos.userId, userId),
+        eq(vinculos.unidadeId, dados.unidadeId),
+      ),
+    });
+
+    const coordena = dados.role === "COORDENADOR";
+
+    if (existente) {
+      await tx
+        .update(vinculos)
+        .set({ isCoordenador: coordena, status: "ATIVO", updatedAt: new Date() })
+        .where(eq(vinculos.id, existente.id));
+    } else {
+      await tx.insert(vinculos).values({
+        userId,
+        unidadeId: dados.unidadeId,
+        status: "ATIVO",
+        isCoordenador: coordena,
+      });
+    }
+  });
+
+  await logAudit({
+    userId: adminId,
+    action: "usuario.papel_alterado",
+    entityType: "user",
+    entityId: userId,
+    oldValue: { role: alvo.role },
+    newValue: { role: dados.role, unidadeId: dados.unidadeId ?? null },
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  return { id: userId, role: dados.role };
 }
