@@ -6,7 +6,7 @@ module.exports = {
       cwd: "/home/ubuntu/nep-samu",
       env: {
         NODE_ENV: "production",
-        PORT: 3002,
+        PORT: 3062,
         HOSTNAME: "0.0.0.0",
       },
     },
