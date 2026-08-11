@@ -87,9 +87,20 @@ export function OrganizerDashboard() {
           accentColor="var(--samu-orange)"
           icon={<Users />}
         />
+        {/* 0% sem nenhuma inscrição não é um resultado ruim, é ausência de
+            dado — mostrar o número faria alguém agir sobre nada. */}
         <MetricsCard
           title="Taxa Confirmação"
-          value={`${metrics?.taxaConfirmacao ?? 0}%`}
+          value={
+            metrics && metrics.totalInscritos > 0
+              ? `${metrics.taxaConfirmacao}%`
+              : "—"
+          }
+          description={
+            metrics && metrics.totalInscritos > 0
+              ? undefined
+              : "sem inscrições ainda"
+          }
           accentColor="var(--status-info)"
           icon={<CheckCircle />}
         />
@@ -128,8 +139,9 @@ export function OrganizerDashboard() {
                         status={turma.status as Parameters<typeof TurmaStatusBadge>[0]["status"]}
                       />
                     </td>
-                    <td className="w-64 px-5 py-3">
+                    <td className="w-56 px-5 py-3">
                       <OccupancyBar
+                        legenda="resumo"
                         total={turma.vagasTotais}
                         segments={[
                           {

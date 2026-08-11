@@ -28,6 +28,25 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 type SortKey = "municipio" | "tipo" | "nome";
+
+function SortIcon({
+  col,
+  sortKey,
+  sortDir,
+}: {
+  col: SortKey;
+  sortKey: SortKey | null;
+  sortDir: "asc" | "desc";
+}) {
+  if (sortKey !== col)
+    return <ArrowUpDown className="ml-1 inline h-3 w-3 opacity-40" />;
+  return sortDir === "asc" ? (
+    <ArrowUp className="ml-1 inline h-3 w-3" />
+  ) : (
+    <ArrowDown className="ml-1 inline h-3 w-3" />
+  );
+}
+
 type SortDir = "asc" | "desc";
 
 function defaultSort(a: Unidade, b: Unidade): number {
@@ -96,16 +115,6 @@ export function UnidadesClient({ unidades }: { unidades: Unidade[] }) {
     });
   }, [unidades, sortKey, sortDir]);
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col)
-      return <ArrowUpDown className="ml-1 inline h-3 w-3 opacity-40" />;
-    return sortDir === "asc" ? (
-      <ArrowUp className="ml-1 inline h-3 w-3" />
-    ) : (
-      <ArrowDown className="ml-1 inline h-3 w-3" />
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -129,19 +138,19 @@ export function UnidadesClient({ unidades }: { unidades: Unidade[] }) {
                 className="cursor-pointer select-none px-5 py-3 font-medium hover:text-[var(--text-primary)]"
                 onClick={() => handleSort("nome")}
               >
-                Nome <SortIcon col="nome" />
+                Nome <SortIcon col="nome" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th
                 className="cursor-pointer select-none px-5 py-3 font-medium hover:text-[var(--text-primary)]"
                 onClick={() => handleSort("tipo")}
               >
-                Tipo <SortIcon col="tipo" />
+                Tipo <SortIcon col="tipo" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th
                 className="cursor-pointer select-none px-5 py-3 font-medium hover:text-[var(--text-primary)]"
                 onClick={() => handleSort("municipio")}
               >
-                Município <SortIcon col="municipio" />
+                Município <SortIcon col="municipio" sortKey={sortKey} sortDir={sortDir} />
               </th>
               <th className="px-5 py-3 font-medium">Status</th>
             </tr>
@@ -171,16 +180,18 @@ export function UnidadesClient({ unidades }: { unidades: Unidade[] }) {
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {u.municipio?.nome || "—"}
                   </td>
+                  {/* Quase toda unidade está ativa: destacar as 28 iguais só
+                      esconde a exceção. Ativo fica discreto, inativo grita. */}
                   <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                        u.ativo
-                          ? "bg-[var(--solid-success)] text-white"
-                          : "bg-[var(--solid-neutral)] text-white"
-                      }`}
-                    >
-                      {u.ativo ? "Ativo" : "Inativo"}
-                    </span>
+                    {u.ativo ? (
+                      <span className="text-xs text-[var(--text-muted)]">
+                        Ativo
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded bg-[var(--solid-neutral)] px-2 py-0.5 text-xs font-medium text-white">
+                        Inativo
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))
