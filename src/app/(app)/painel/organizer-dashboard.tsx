@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { BookOpen, CalendarDays, Users, CheckCircle } from "lucide-react";
 import { MetricsCard } from "@/components/dashboard/metrics-card";
 import { OccupancyBar } from "@/components/dashboard/occupancy-bar";
 import { TurmaStatusBadge } from "@/components/shared/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
 
@@ -31,24 +32,19 @@ interface DashboardData {
 export function OrganizerDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState(false);
 
-  useEffect(() => {
+  const carregar = useCallback(() => {
     apiFetch<DashboardData>("/api/dashboard/organizador")
       .then(setData)
-      .catch(() => {
-        // Fallback mock data for development
-        setData({
-          metrics: {
-            cursosAtivos: 14,
-            turmasAbertas: 5,
-            totalInscritos: 127,
-            taxaConfirmacao: 78,
-          },
-          turmasRecentes: [],
-        });
-      })
+      // Aqui havia um fallback de dados falsos — 14 cursos, 127 inscritos,
+      // 78% de confirmação — que ia para a tela como se fossem reais sempre
+      // que a API falhasse. Painel de gestão não inventa número.
+      .catch(() => setErro(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(carregar, [carregar]);
 
   if (loading) {
     return (
@@ -59,6 +55,29 @@ export function OrganizerDashboard() {
           ))}
         </div>
         <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (erro) {
+    return (
+      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-8 text-center">
+        <p className="font-medium">Não foi possível carregar o painel</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Os números não puderam ser lidos do servidor. Nada foi perdido — é só
+          tentar de novo.
+        </p>
+        <Button
+          className="mt-4"
+          variant="outline"
+          onClick={() => {
+            setLoading(true);
+            setErro(false);
+            carregar();
+          }}
+        >
+          Tentar de novo
+        </Button>
       </div>
     );
   }

@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PROFISSOES, PROFISSAO_LABELS, type Profissao } from "@/lib/enums";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 
 interface Vinculo {
@@ -125,6 +126,7 @@ export function ProfissionaisClient({
       ]);
       setShowCadastrar(false);
       setCadForm({ nome: "", email: "", telefone: "", profissao: "", unidadeId: "", senha: "" });
+      toast.success(`${created.nome ?? cadForm.nome} cadastrado(a)`);
     } catch (err) {
       setCadError(err instanceof Error ? err.message : "Erro ao cadastrar");
     } finally {
@@ -142,11 +144,17 @@ export function ProfissionaisClient({
       });
       const url = `${window.location.origin}${BASE_PATH}/convite/${created.token}`;
       setConviteLink(url);
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 3000);
-    } catch {
-      // ignore
+      // A cópia é um extra: se a área de transferência não estiver disponível
+      // (contexto não-seguro, permissão negada) o link já está na tela.
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      } catch {
+        toast.message("Link gerado. Copie manualmente — o navegador bloqueou a cópia automática.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Não foi possível gerar o link");
     } finally {
       setConviteLoading(false);
     }
@@ -158,7 +166,8 @@ export function ProfissionaisClient({
       const data = await apiFetch<Convite[]>("/api/convites");
       setConvites(data);
     } catch {
-      // ignore
+      // Sem isto, falha de rede era indistinguível de "nenhum convite".
+      toast.error("Não foi possível carregar os convites");
     } finally {
       setConvitesLoading(false);
     }
@@ -579,10 +588,16 @@ export function ProfissionaisClient({
                   <code className="flex-1 break-all text-xs">{conviteLink}</code>
                   <button
                     onClick={async () => {
-                      await navigator.clipboard.writeText(conviteLink);
-                      setCopied(true);
-                      setTimeout(() => setCopied(false), 3000);
+                      try {
+                        await navigator.clipboard.writeText(conviteLink);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 3000);
+                      } catch {
+                        toast.error("O navegador bloqueou a cópia. Selecione o link e copie.");
+                      }
                     }}
+                    aria-label="Copiar link de cadastro"
+                    title="Copiar link"
                     className="shrink-0"
                   >
                     {copied ? (
