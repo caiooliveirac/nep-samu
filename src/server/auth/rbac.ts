@@ -22,7 +22,8 @@ export type Permission =
   | "relatorio:view"
   | "relatorio:export"
   | "notificacao:send"
-  | "audit:view";
+  | "audit:view"
+  | "usuario:manage";
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   ORGANIZADOR: [
@@ -45,6 +46,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "relatorio:export",
     "notificacao:send",
     "audit:view",
+    "usuario:manage",
   ],
   COORDENADOR: [
     "profissional:create",

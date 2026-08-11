@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Building2,
   Users,
+  ShieldCheck,
   Bell,
   BarChart3,
   ChevronLeft,
@@ -52,6 +53,12 @@ const navItems: NavItem[] = [
     href: "/profissionais",
     icon: Users,
     roles: ["ORGANIZADOR", "COORDENADOR"],
+  },
+  {
+    label: "Usuários",
+    href: "/usuarios",
+    icon: ShieldCheck,
+    roles: ["ORGANIZADOR"],
   },
   {
     label: "Notificações",
