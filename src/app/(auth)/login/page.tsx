@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,13 @@ function LoginForm() {
             {loading ? "Entrando..." : "Entrar"}
           </Button>
         </form>
+
+        <Link
+          href="/esqueci-senha"
+          className="block text-center text-sm text-[var(--samu-orange)] hover:underline"
+        >
+          Esqueci minha senha
+        </Link>
 
         <p className="text-center text-xs text-[var(--text-muted)]">
           SAMU — Regional Metropolitana de Salvador

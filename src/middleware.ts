@@ -4,7 +4,9 @@ import type { NextRequest } from "next/server";
 
 export default auth((req: NextRequest & { auth: unknown }) => {
   const { pathname } = req.nextUrl;
-  const session = req.auth as { user?: { role: string } } | null;
+  const session = req.auth as {
+    user?: { role: string; mustChangePassword?: boolean };
+  } | null;
 
   // pathname includes basePath in Next.js 16 (e.g. "/NEP/painel")
   const basePath = "/NEP";
@@ -13,7 +15,14 @@ export default auth((req: NextRequest & { auth: unknown }) => {
     : pathname;
 
   // Public paths (check against stripped path)
-  const publicPaths = ["/login", "/convite", "/api/auth", "/api/health"];
+  const publicPaths = [
+    "/login",
+    "/convite",
+    "/esqueci-senha",
+    "/redefinir-senha",
+    "/api/auth",
+    "/api/health",
+  ];
   const isPublic = publicPaths.some((p) => path.startsWith(p));
   // /api/convites/:token/registrar is public (for self-registration via invite link)
   const isConviteRegistrar = /^\/api\/convites\/[^/]+\/registrar$/.test(path);
@@ -26,6 +35,13 @@ export default auth((req: NextRequest & { auth: unknown }) => {
     const loginUrl = new URL(`${basePath}/login`, req.url);
     loginUrl.searchParams.set("callbackUrl", path);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Senha provisória: enquanto não trocar, o único destino é /trocar-senha.
+  // A API da troca vive sob /api/auth, que já é pública aqui e confere a
+  // sessão por conta própria.
+  if (session.user.mustChangePassword && path !== "/trocar-senha") {
+    return NextResponse.redirect(new URL(`${basePath}/trocar-senha`, req.url));
   }
 
   return NextResponse.next();

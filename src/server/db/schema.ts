@@ -132,6 +132,9 @@ export const users = pgTable(
     role: roleEnum("role").notNull().default("PROFISSIONAL"),
     profissao: profissaoEnum("profissao"),
     passwordHash: text("password_hash"),
+    // Senha provisória dada por um organizador: enquanto for true, o middleware
+    // só deixa a pessoa ver /trocar-senha.
+    mustChangePassword: boolean("must_change_password").notNull().default(false),
     emailVerified: timestamp("email_verified", { withTimezone: true }),
     ativo: boolean("ativo").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -408,6 +411,28 @@ export const convites = pgTable(
   (table) => [
     index("idx_convites_token").on(table.token),
     index("idx_convites_unidade").on(table.unidadeId),
+  ],
+);
+
+// Token de "esqueci minha senha". Um por pedido; vale 2 horas e some quando é
+// usado. Guardar `usadoEm` em vez de apagar a linha deixa rastro de quem pediu.
+export const passwordResetTokens = pgTable(
+  "password_reset_tokens",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: varchar("token", { length: 128 }).notNull().unique(),
+    expiraEm: timestamp("expira_em", { withTimezone: true }).notNull(),
+    usadoEm: timestamp("usado_em", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_password_reset_token").on(table.token),
+    index("idx_password_reset_user").on(table.userId),
   ],
 );
 

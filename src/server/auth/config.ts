@@ -41,17 +41,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email: user.email,
           role: user.role,
           profissao: user.profissao,
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { role: string }).role;
         token.profissao = (user as { profissao?: string | null }).profissao ?? null;
+        token.mustChangePassword =
+          (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
       }
+
+      // Depois da troca obrigatória o cliente chama update(): sem isto o JWT
+      // continuaria dizendo "precisa trocar" e a pessoa ficaria presa na tela.
+      if (trigger === "update" && token.id) {
+        const atual = await db.query.users.findFirst({
+          where: eq(users.id, token.id as string),
+          columns: { mustChangePassword: true },
+        });
+        token.mustChangePassword = atual?.mustChangePassword ?? false;
+      }
+
       return token;
     },
     async session({ session, token }) {
@@ -59,6 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.profissao = (token.profissao as string | null) ?? null;
+        session.user.mustChangePassword = Boolean(token.mustChangePassword);
       }
       return session;
     },
