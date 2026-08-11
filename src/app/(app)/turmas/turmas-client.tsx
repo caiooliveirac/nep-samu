@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, CalendarDays, Search } from "lucide-react";
+import { Plus, CalendarDays, Search, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,9 @@ export function TurmasClient({
 }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+
+  const temFiltro = search.trim() !== "" || statusFilter !== "ALL";
+  const podeEditar = role === "ORGANIZADOR";
 
   const filtered = turmas.filter((t) => {
     const matchSearch =
@@ -98,11 +101,37 @@ export function TurmasClient({
         <EmptyState
           icon={<CalendarDays />}
           title="Nenhuma turma encontrada"
-          description="Ajuste os filtros ou cadastre uma nova turma"
+          description={
+            temFiltro
+              ? "Nenhuma turma corresponde à busca ou ao filtro escolhido."
+              : "Ainda não há turmas. Crie a primeira a partir de um curso do catálogo."
+          }
+          action={
+            temFiltro ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSearch("");
+                  setStatusFilter("ALL");
+                }}
+              >
+                Limpar busca e filtros
+              </Button>
+            ) : (
+              podeEditar && (
+                <Link href="/turmas/nova">
+                  <Button>
+                    <Plus />
+                    Nova Turma
+                  </Button>
+                </Link>
+              )
+            )
+          }
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
-          <table className="w-full min-w-[42rem] text-sm">
+          <table className="w-full min-w-[56rem] text-sm">
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Turma</th>
@@ -119,28 +148,47 @@ export function TurmasClient({
                   key={turma.id}
                   className="border-b border-[var(--border-muted)] transition-colors hover:bg-[var(--bg-tertiary)]"
                 >
-                  <td className="px-5 py-3 font-medium">{turma.titulo}</td>
+                  <td className="px-5 py-3 font-medium">
+                    {/* O título também abre a turma: é onde a mão vai primeiro. */}
+                    <Link
+                      href={`/turmas/${turma.id}`}
+                      className="text-[var(--text-primary)] hover:underline"
+                    >
+                      {turma.titulo}
+                    </Link>
+                  </td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {turma.curso?.nome || "—"}
                   </td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {formatDate(turma.dataInicio)} {formatTime(turma.horaInicio)}
                   </td>
-                  <td
-                    className="px-5 py-3"
-                    style={{ fontFamily: "var(--font-mono)" }}
-                  >
-                    {turma.vagasTotais}
+                  <td className="whitespace-nowrap px-5 py-3">
+                    <span style={{ fontFamily: "var(--font-mono)" }}>
+                      {turma.vagasTotais}
+                    </span>{" "}
+                    <span className="text-[var(--text-secondary)]">vagas</span>
                   </td>
                   <td className="px-5 py-3">
                     <TurmaStatusBadge status={turma.status as TurmaStatus} />
                   </td>
                   <td className="px-5 py-3">
-                    <Link href={`/turmas/${turma.id}`}>
-                      <Button variant="ghost" size="sm">
-                        Ver
-                      </Button>
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/turmas/${turma.id}`}>
+                        <Button variant="outline" size="sm">
+                          <Eye />
+                          Ver turma
+                        </Button>
+                      </Link>
+                      {podeEditar && (
+                        <Link href={`/turmas/${turma.id}/editar`}>
+                          <Button variant="outline" size="sm">
+                            <Pencil />
+                            Editar
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

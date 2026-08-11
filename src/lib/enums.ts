@@ -84,12 +84,25 @@ export type VinculoStatus = (typeof VINCULO_STATUS)[number];
 export const COTA_MODO = ["LIVRE", "POR_UNIDADE", "POR_MUNICIPIO"] as const;
 export type CotaModo = (typeof COTA_MODO)[number];
 
+/** Como as vagas se dividem — aparece na tela, então diz o que significa. */
+export const COTA_MODO_LABELS: Record<CotaModo, string> = {
+  LIVRE: "por ordem de inscrição",
+  POR_UNIDADE: "com cota por unidade",
+  POR_MUNICIPIO: "com cota por município",
+};
+
 export const ESCOPO_ELEGIBILIDADE = [
   "REGIONAL_INTEIRA",
   "MUNICIPIOS_ESPECIFICOS",
   "UNIDADES_ESPECIFICAS",
 ] as const;
 export type EscopoElegibilidade = (typeof ESCOPO_ELEGIBILIDADE)[number];
+
+export const ESCOPO_ELEGIBILIDADE_LABELS: Record<EscopoElegibilidade, string> = {
+  REGIONAL_INTEIRA: "Toda a regional",
+  MUNICIPIOS_ESPECIFICOS: "Municípios escolhidos",
+  UNIDADES_ESPECIFICAS: "Unidades escolhidas",
+};
 
 export const MODALIDADE = ["PRESENCIAL", "ONLINE", "HIBRIDO"] as const;
 export type Modalidade = (typeof MODALIDADE)[number];

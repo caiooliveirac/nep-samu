@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, BookOpen, Search, Pencil, CalendarPlus } from "lucide-react";
+import { Plus, BookOpen, Search, Pencil, CalendarPlus, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -76,7 +76,7 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
         />
       ) : (
         <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
-          <table className="w-full min-w-[42rem] text-sm">
+          <table className="w-full min-w-[58rem] text-sm">
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Nome</th>
@@ -92,7 +92,15 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
                   key={curso.id}
                   className="border-b border-[var(--border-muted)] transition-colors hover:bg-[var(--bg-tertiary)]"
                 >
-                  <td className="px-5 py-3 font-medium">{curso.nome}</td>
+                  <td className="px-5 py-3 font-medium">
+                    {/* O nome também abre o curso: é onde a mão vai primeiro. */}
+                    <Link
+                      href={`/cursos/${curso.id}`}
+                      className="text-[var(--text-primary)] hover:underline"
+                    >
+                      {curso.nome}
+                    </Link>
+                  </td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {curso.categoria?.nome || "—"}
                   </td>
@@ -107,21 +115,27 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
                       ? `${Math.floor(curso.cargaHoraria / 60)}h${curso.cargaHoraria % 60 > 0 ? `${curso.cargaHoraria % 60}min` : ""}`
                       : "—"}
                   </td>
+                  {/* O lápis e o calendário eram ícones mudos, sem nem title:
+                      ninguém adivinhava que um deles abria uma turma nova
+                      deste curso. Agora cada ação diz o que faz. */}
                   <td className="px-5 py-3">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                       <Link href={`/cursos/${curso.id}`}>
-                        <Button variant="ghost" size="sm">
-                          Ver
+                        <Button variant="outline" size="sm">
+                          <Eye />
+                          Ver curso
                         </Button>
                       </Link>
                       <Link href={`/cursos/${curso.id}/editar`}>
-                        <Button variant="ghost" size="sm">
-                          <Pencil className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm">
+                          <Pencil />
+                          Editar
                         </Button>
                       </Link>
                       <Link href={`/turmas/nova?cursoId=${curso.id}`}>
-                        <Button variant="ghost" size="sm">
-                          <CalendarPlus className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm">
+                          <CalendarPlus />
+                          Abrir turma
                         </Button>
                       </Link>
                     </div>

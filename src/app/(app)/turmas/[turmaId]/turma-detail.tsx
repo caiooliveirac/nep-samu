@@ -10,8 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricsCard } from "@/components/dashboard/metrics-card";
 import { OccupancyBar } from "@/components/dashboard/occupancy-bar";
 import { TurmaStatusBadge, EnrollmentStatusBadge } from "@/components/shared/status-badge";
-import { PROFISSAO_LABELS, TURMA_STATUS_LABELS } from "@/lib/enums";
-import type { TurmaStatus, EnrollmentStatus } from "@/lib/enums";
+import {
+  COTA_MODO_LABELS,
+  ESCOPO_ELEGIBILIDADE_LABELS,
+  PROFISSAO_LABELS,
+  TURMA_STATUS_LABELS,
+} from "@/lib/enums";
+import type {
+  CotaModo,
+  EnrollmentStatus,
+  EscopoElegibilidade,
+  TurmaStatus,
+} from "@/lib/enums";
 import { formatDate } from "@/lib/format";
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -70,8 +80,53 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
 
   const nextStatuses = VALID_TRANSITIONS[turma.status] || [];
 
+  /*
+   * Os botões mostravam o nome do estado de destino — "Publicada",
+   * "Inscrições Abertas" — que é rótulo, não ação: quem organiza não sabia se
+   * aquilo dizia em que estado a turma está ou o que o clique faria. Aqui cada
+   * transição ganha o verbo e a consequência.
+   */
+  const ACOES: Record<string, { rotulo: string; efeito: string; confirmar?: string }> = {
+    PUBLICADA: {
+      rotulo: "Publicar turma",
+      efeito: "A turma fica visível para os profissionais, mas ainda sem inscrição.",
+    },
+    RASCUNHO: {
+      rotulo: "Voltar para rascunho",
+      efeito: "A turma sai da vista dos profissionais e volta a ser editável como rascunho.",
+    },
+    INSCRICOES_ABERTAS: {
+      rotulo: "Abrir inscrições",
+      efeito: "Os profissionais passam a poder se inscrever nesta turma.",
+    },
+    LOTADA: {
+      rotulo: "Marcar como lotada",
+      efeito: "Novas pessoas entram em fila de espera em vez de vaga.",
+    },
+    INSCRICOES_ENCERRADAS: {
+      rotulo: "Encerrar inscrições",
+      efeito: "Ninguém mais consegue se inscrever. A lista atual é mantida.",
+      confirmar: "Encerrar as inscrições desta turma? Ninguém mais poderá se inscrever.",
+    },
+    EM_ANDAMENTO: {
+      rotulo: "Iniciar turma",
+      efeito: "Marca que a turma começou e libera o registro de presença.",
+    },
+    CONCLUIDA: {
+      rotulo: "Concluir turma",
+      efeito: "Encerra a turma de vez. Depois disso ela não muda mais de estado.",
+      confirmar: "Concluir esta turma? Depois de concluída ela não pode mais mudar de estado.",
+    },
+    CANCELADA: {
+      rotulo: "Cancelar turma",
+      efeito: "Cancela a turma para todo mundo. Não dá para desfazer.",
+      confirmar: "Cancelar esta turma? Ela é cancelada para todos os inscritos e isso não pode ser desfeito.",
+    },
+  };
+
   async function handleStatusChange(newStatus: TurmaStatus) {
-    if (newStatus === "CANCELADA" && !confirm("Tem certeza que deseja cancelar esta turma?")) return;
+    const acao = ACOES[newStatus];
+    if (acao?.confirmar && !confirm(acao.confirmar)) return;
     setLoading(true);
     try {
       await apiFetch(`/api/turmas/${turma.id}`, {
@@ -79,7 +134,7 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      toast.success(`Status alterado para ${TURMA_STATUS_LABELS[newStatus]}`);
+      toast.success(acao ? `${acao.rotulo}: feito.` : "Turma atualizada.");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao alterar status");
@@ -147,9 +202,9 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         <div className="flex gap-2">
           {isOrganizador && (
             <Link href={`/turmas/${turma.id}/editar`}>
-              <Button variant="outline" size="sm">
-                <Pencil className="mr-1 h-3 w-3" />
-                Editar
+              <Button variant="outline">
+                <Pencil />
+                Editar turma
               </Button>
             </Link>
           )}
@@ -172,29 +227,46 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
       {/* Status management (organizer only) */}
       {isOrganizador && nextStatuses.length > 0 && (
         <Card>
-          <CardContent className="flex flex-wrap items-center gap-3 pt-4">
-            <span className="text-sm font-medium text-[var(--text-secondary)]">Ações:</span>
-            {nextStatuses.filter((s) => s !== "CANCELADA").map((s) => (
-              <Button
-                key={s}
-                size="sm"
-                variant="outline"
-                disabled={loading}
-                onClick={() => handleStatusChange(s)}
-              >
-                {TURMA_STATUS_LABELS[s]}
-              </Button>
-            ))}
-            {nextStatuses.includes("CANCELADA") && (
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={loading}
-                onClick={() => handleStatusChange("CANCELADA")}
-              >
-                Cancelar Turma
-              </Button>
-            )}
+          <CardContent className="space-y-3 pt-4">
+            <p className="text-sm font-medium text-[var(--text-secondary)]">
+              O que você pode fazer com esta turma agora
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {nextStatuses
+                .filter((s) => s !== "CANCELADA")
+                .map((s) => (
+                  <Button
+                    key={s}
+                    variant="outline"
+                    disabled={loading}
+                    title={ACOES[s]?.efeito}
+                    onClick={() => handleStatusChange(s)}
+                  >
+                    {ACOES[s]?.rotulo ?? TURMA_STATUS_LABELS[s]}
+                  </Button>
+                ))}
+              {nextStatuses.includes("CANCELADA") && (
+                <Button
+                  variant="destructive"
+                  disabled={loading}
+                  title={ACOES.CANCELADA.efeito}
+                  onClick={() => handleStatusChange("CANCELADA")}
+                >
+                  {ACOES.CANCELADA.rotulo}
+                </Button>
+              )}
+            </div>
+            {/* O botão diz o verbo; a linha abaixo diz o que muda de verdade. */}
+            <ul className="space-y-1 text-xs text-[var(--text-muted)]">
+              {nextStatuses.map((s) => (
+                <li key={s}>
+                  <span className="text-[var(--text-secondary)]">
+                    {ACOES[s]?.rotulo ?? TURMA_STATUS_LABELS[s]}
+                  </span>{" "}
+                  — {ACOES[s]?.efeito}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       )}
@@ -215,7 +287,10 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         </div>
         <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           <Users className="h-4 w-4" />
-          <span>{turma.vagasTotais} vagas ({turma.modoCota})</span>
+          <span>
+            {turma.vagasTotais} vagas,{" "}
+            {COTA_MODO_LABELS[turma.modoCota as CotaModo] ?? turma.modoCota}
+          </span>
         </div>
       </div>
 
@@ -276,7 +351,10 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
           </div>
           <div>
             <span className="text-sm text-[var(--text-secondary)]">
-              Escopo: {turma.escopoElegibilidade.replace(/_/g, " ")}
+              Quem pode se inscrever:{" "}
+              {ESCOPO_ELEGIBILIDADE_LABELS[
+                turma.escopoElegibilidade as EscopoElegibilidade
+              ] ?? turma.escopoElegibilidade}
             </span>
           </div>
           <div>
