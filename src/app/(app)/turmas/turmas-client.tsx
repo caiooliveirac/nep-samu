@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { TurmaStatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { OccupancyBar } from "@/components/dashboard/occupancy-bar";
 import { formatDate, formatTime } from "@/lib/format";
 import type { TurmaStatus } from "@/lib/enums";
 import { TURMA_STATUS, TURMA_STATUS_LABELS } from "@/lib/enums";
@@ -22,6 +23,9 @@ interface Turma {
   vagasTotais: number;
   status: string;
   curso: { nome: string } | null;
+  ocupando: number;
+  confirmados: number;
+  fila: number;
 }
 
 export function TurmasClient({
@@ -137,7 +141,7 @@ export function TurmasClient({
                 <th className="px-5 py-3 font-medium">Turma</th>
                 <th className="px-5 py-3 font-medium">Curso</th>
                 <th className="px-5 py-3 font-medium">Data</th>
-                <th className="px-5 py-3 font-medium">Vagas</th>
+                <th className="px-5 py-3 font-medium">Ocupação</th>
                 <th className="px-5 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium">Ações</th>
               </tr>
@@ -163,11 +167,30 @@ export function TurmasClient({
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {formatDate(turma.dataInicio)} {formatTime(turma.horaInicio)}
                   </td>
-                  <td className="whitespace-nowrap px-5 py-3">
-                    <span style={{ fontFamily: "var(--font-mono)" }}>
-                      {turma.vagasTotais}
-                    </span>{" "}
-                    <span className="text-[var(--text-secondary)]">vagas</span>
+                  {/* Quem organiza precisa saber, sem abrir a turma, quais
+                      estão enchendo e quais continuam vazias. */}
+                  <td className="w-56 px-5 py-3">
+                    <OccupancyBar
+                      legenda="resumo"
+                      total={turma.vagasTotais}
+                      segments={[
+                        {
+                          label: "Confirmados",
+                          value: turma.confirmados,
+                          color: "var(--status-success)",
+                        },
+                        {
+                          label: "Aguardando confirmação",
+                          value: turma.ocupando - turma.confirmados,
+                          color: "var(--status-info)",
+                        },
+                      ]}
+                    />
+                    {turma.fila > 0 && (
+                      <p className="mt-1 text-xs text-[var(--status-warning)]">
+                        {turma.fila} na fila de espera
+                      </p>
+                    )}
                   </td>
                   <td className="px-5 py-3">
                     <TurmaStatusBadge status={turma.status as TurmaStatus} />

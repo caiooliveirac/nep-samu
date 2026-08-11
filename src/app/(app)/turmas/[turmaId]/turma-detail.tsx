@@ -23,6 +23,7 @@ import type {
   TurmaStatus,
 } from "@/lib/enums";
 import { formatDate } from "@/lib/format";
+import { ListaInscritos } from "@/components/turma/lista-inscritos";
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -297,7 +298,7 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
       {/* Metrics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <MetricsCard
-          title="Inscritos"
+          title="Ocupando vaga"
           value={metrics.inscritos}
           accentColor="var(--status-info)"
           icon={<Users />}
@@ -324,12 +325,19 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         <CardContent>
           <OccupancyBar
             total={turma.vagasTotais}
+            // A fila não entra na barra: quem está nela não ocupa vaga, e
+            // somá-la fazia "6 de 30" numa turma com 5 vagas tomadas.
             segments={[
               { label: "Confirmados", value: metrics.confirmados, color: "var(--status-success)" },
-              { label: "Inscritos", value: metrics.inscritos - metrics.confirmados, color: "var(--status-info)" },
-              { label: "Fila de espera", value: metrics.filaEspera, color: "var(--status-warning)" },
+              { label: "Aguardando confirmação", value: metrics.inscritos - metrics.confirmados, color: "var(--status-info)" },
             ]}
           />
+          {metrics.filaEspera > 0 && (
+            <p className="mt-3 text-sm text-[var(--text-secondary)]">
+              Além dessas, {metrics.filaEspera} pessoa(s) na fila de espera —
+              elas entram se alguém liberar a vaga.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -388,47 +396,16 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         </Card>
       )}
 
-      {/* Lista de inscritos (organizador/coordenador) */}
-      {isOrganizador && turma.enrollments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Inscritos ({turma.enrollments.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[42rem] text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
-                    <th className="pb-2 font-medium">Nome</th>
-                    <th className="pb-2 font-medium">Profissão</th>
-                    <th className="pb-2 font-medium">Unidade</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Data inscrição</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-subtle)]">
-                  {turma.enrollments.map((e) => (
-                    <tr key={e.id} className="hover:bg-[var(--bg-tertiary)]">
-                      <td className="py-2 text-[var(--text-primary)]">{e.user.nome}</td>
-                      <td className="py-2 text-[var(--text-secondary)]">
-                        {e.user.profissao
-                          ? PROFISSAO_LABELS[e.user.profissao as keyof typeof PROFISSAO_LABELS]
-                          : "—"}
-                      </td>
-                      <td className="py-2 text-[var(--text-secondary)]">{e.unidade.nome}</td>
-                      <td className="py-2">
-                        <EnrollmentStatusBadge status={e.status} />
-                      </td>
-                      <td className="py-2 text-[var(--text-muted)]">
-                        {formatDate(e.inscritoEm)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      {isOrganizador && (
+        <ListaInscritos
+          turmaId={turma.id}
+          statusTurma={turma.status}
+          inscritos={turma.enrollments}
+          // A API de presença existe desde sempre e não tinha botão nenhum.
+          podeRegistrarPresenca={
+            turma.status === "EM_ANDAMENTO" || turma.status === "CONCLUIDA"
+          }
+        />
       )}
     </div>
   );

@@ -169,14 +169,9 @@ export function OrganizerDashboard() {
                             color: "var(--status-success)",
                           },
                           {
-                            label: "Inscritos",
-                            value: turma.inscritos,
+                            label: "Aguardando confirmação",
+                            value: turma.inscritos - turma.confirmados,
                             color: "var(--status-info)",
-                          },
-                          {
-                            label: "Fila",
-                            value: turma.filaEspera,
-                            color: "var(--status-warning)",
                           },
                         ]}
                       />
