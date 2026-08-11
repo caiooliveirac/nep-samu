@@ -1,72 +1,68 @@
-name: Deploy NEP SAMU
+# Deploy do NEP SAMU — roda NO magalu, via runner self-hosted (label `nep`).
+# A EC2 foi encerrada em julho/2026: nenhum passo aqui pode voltar a apontar
+# para ela. Sem secrets de SSH, sem host remoto — o runner já está dentro do
+# servidor de destino.
+name: Deploy NEP SAMU (magalu)
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-env:
-  APP_NAME: nep-samu
-  DEPLOY_PATH: /home/ubuntu/nep-samu
-  PORT: 3002
+# um deploy por vez; cancelar no meio de um build deixa o pm2 servindo um
+# .next pela metade
+concurrency:
+  group: deploy-nep-samu
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    name: Publicar em mnrs.com.br/NEP
+    runs-on: [self-hosted, nep]
     steps:
-      - uses: actions/checkout@v4
+      - name: Atualizar, construir e reiniciar
+        run: |
+          set -euo pipefail
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
+          APP_DIR=/home/ubuntu/nep-samu
+          cd "$APP_DIR"
 
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+          # commit atual, para voltar se o novo não subir
+          ANTERIOR=$(git rev-parse HEAD)
+          echo "commit atual: $ANTERIOR"
 
-            # Garantir pnpm disponível
-            command -v pnpm >/dev/null 2>&1 || npm i -g pnpm
-
-            APP_DIR=${{ env.DEPLOY_PATH }}
-            REPO_URL=https://github.com/${{ github.repository }}.git
-
-            # Clone ou pull
-            if [ ! -d "$APP_DIR/.git" ]; then
-              git clone "$REPO_URL" "$APP_DIR"
-            fi
-
-            cd "$APP_DIR"
-
-            # Preservar .env antes do reset
-            [ -f .env ] && cp .env /tmp/nep-samu-env-backup
-
-            git fetch origin main
-            git reset --hard origin/main
-
-            # Restaurar .env
-            [ -f /tmp/nep-samu-env-backup ] && mv /tmp/nep-samu-env-backup .env
-
-            # Instalar dependências
+          publicar() {
+            git fetch --quiet origin main
+            git reset --quiet --hard "$1"
             pnpm install --frozen-lockfile
-
-            # Build
             pnpm build
-
-            # Copiar static assets para standalone (obrigatório)
+            # o standalone não copia estáticos nem public: é passo obrigatório
             cp -r .next/static .next/standalone/.next/static
             cp -r public .next/standalone/public 2>/dev/null || true
+            # o .env vive só no servidor (600) e nunca entra no repositório
+            cp .env .next/standalone/.env
+            pm2 restart nep-samu --update-env || pm2 start ecosystem.config.js --only nep-samu
+          }
 
-            # Aplicar migrations (push para sync idempotente)
-            pnpm drizzle-kit push --force
+          publicar "origin/main"
 
-            # Restart com PM2
-            pm2 delete ${{ env.APP_NAME }} 2>/dev/null || true
-            pm2 start ecosystem.config.js --only ${{ env.APP_NAME }}
+          # health check: se o app não responder, volta ao commit anterior
+          ok=""
+          for i in $(seq 1 10); do
+            sleep 3
+            if curl -fsS -o /dev/null http://127.0.0.1:3062/NEP/api/health; then ok=1; break; fi
+          done
 
+          if [ -z "$ok" ]; then
+            echo "::error::health check falhou — voltando para $ANTERIOR"
+            publicar "$ANTERIOR"
             pm2 save
+            exit 1
+          fi
 
-            echo "✅ Deploy concluído — porta ${{ env.PORT }}"
+          pm2 save
+          echo "deploy concluído — $(git rev-parse --short HEAD) em 127.0.0.1:3062, público em https://mnrs.com.br/NEP"
+
+# Esquema do banco: nenhum passo automático. O banco de produção veio do dump
+# da EC2 e tem dado real; sincronizar esquema sem revisão apaga coluna sem
+# aviso. Quando o esquema mudar, aplicar a mão, com backup antes.
