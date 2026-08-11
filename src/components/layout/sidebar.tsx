@@ -16,7 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface NavItem {
   label: string;
@@ -73,10 +73,14 @@ const navItems: NavItem[] = [
   },
 ];
 
+/** O header dispara isto para abrir a gaveta no celular. */
+export const EVENTO_MENU = "nep:alternar-menu";
+
 export function Sidebar({ role: roleDoServidor }: { role: string }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
+  const [aberto, setAberto] = useState(false);
   // O papel do servidor manda; a sessão do cliente só serve para refletir uma
   // troca de papel sem recarregar a página. Sem esse fallback o menu encolhe a
   // cada navegação, enquanto o useSession ainda está carregando.
@@ -86,13 +90,33 @@ export function Sidebar({ role: roleDoServidor }: { role: string }) {
     (item) => !item.roles || (role && item.roles.includes(role)),
   );
 
+  useEffect(() => {
+    const alternar = () => setAberto((a) => !a);
+    window.addEventListener(EVENTO_MENU, alternar);
+    return () => window.removeEventListener(EVENTO_MENU, alternar);
+  }, []);
+
   return (
-    <aside
-      className={cn(
-        "flex flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-background)] transition-all duration-200",
-        collapsed ? "w-16" : "w-56",
+    <>
+      {/* Fundo que fecha a gaveta; só existe no celular, com ela aberta. */}
+      {aberto && (
+        <button
+          aria-label="Fechar menu"
+          onClick={() => setAberto(false)}
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+        />
       )}
-    >
+
+      <aside
+        className={cn(
+          "flex flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-background)] transition-all duration-200",
+          // No celular a barra sai do fluxo e desliza por cima: 224px fixos em
+          // tela de 390 deixavam 166px para o conteúdo inteiro.
+          "fixed inset-y-0 left-0 z-40 w-56 md:static md:z-auto md:translate-x-0",
+          aberto ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          collapsed ? "md:w-16" : "md:w-56",
+        )}
+      >
       {/* Logo */}
       <div className="flex h-14 items-center gap-2 border-b border-[var(--sidebar-border)] px-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--solid-orange)] text-sm font-bold text-white">
@@ -122,6 +146,9 @@ export function Sidebar({ role: roleDoServidor }: { role: string }) {
                 collapsed && "justify-center px-2",
               )}
               title={collapsed ? item.label : undefined}
+              // No celular a gaveta some ao escolher o destino; sem isto ela
+              // fica por cima da página que acabou de abrir.
+              onClick={() => setAberto(false)}
             >
               <Icon className="h-4 w-4 shrink-0" />
               {!collapsed && <span>{item.label}</span>}
@@ -133,7 +160,8 @@ export function Sidebar({ role: roleDoServidor }: { role: string }) {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="flex h-10 items-center justify-center border-t border-[var(--sidebar-border)] text-[var(--sidebar-muted-foreground)] hover:text-white transition-colors"
+        aria-label={collapsed ? "Expandir menu" : "Encolher menu"}
+        className="hidden h-10 items-center justify-center border-t border-[var(--sidebar-border)] text-[var(--sidebar-muted-foreground)] transition-colors hover:text-white md:flex"
       >
         {collapsed ? (
           <ChevronRight className="h-4 w-4" />
@@ -141,6 +169,7 @@ export function Sidebar({ role: roleDoServidor }: { role: string }) {
           <ChevronLeft className="h-4 w-4" />
         )}
       </button>
-    </aside>
+      </aside>
+    </>
   );
 }

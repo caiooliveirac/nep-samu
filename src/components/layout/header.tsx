@@ -2,10 +2,11 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { Bell, CircleQuestionMark, LogOut, User } from "lucide-react";
+import { Bell, CircleQuestionMark, LogOut, Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { EVENTO_TOUR } from "@/components/tour-painel";
+import { EVENTO_MENU } from "@/components/layout/sidebar";
 import { apiFetch } from "@/lib/api-client";
 
 export function Header({
@@ -26,7 +27,16 @@ export function Header({
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-[var(--border-default)] bg-[var(--bg-secondary)] px-6">
-      <div />
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Abrir menu"
+        className="md:hidden"
+        onClick={() => window.dispatchEvent(new Event(EVENTO_MENU))}
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
+      <div className="hidden md:block" />
 
       <div className="flex items-center gap-3">
         <Button

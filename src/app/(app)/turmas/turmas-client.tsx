@@ -10,7 +10,7 @@ import { TurmaStatusBadge } from "@/components/shared/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDate, formatTime } from "@/lib/format";
 import type { TurmaStatus } from "@/lib/enums";
-import { TURMA_STATUS } from "@/lib/enums";
+import { TURMA_STATUS, TURMA_STATUS_LABELS } from "@/lib/enums";
 
 interface Turma {
   id: string;
@@ -44,7 +44,7 @@ export function TurmasClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Turmas</h1>
           <p className="text-sm text-[var(--text-secondary)]">
@@ -63,7 +63,7 @@ export function TurmasClient({
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm">
+        <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
           <Input
             placeholder="Buscar turmas..."
@@ -72,10 +72,10 @@ export function TurmasClient({
             className="pl-9"
           />
         </div>
-        <div className="flex gap-1">
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1">
           <button
             onClick={() => setStatusFilter("ALL")}
-            className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${statusFilter === "ALL" ? "bg-[var(--samu-blue)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"}`}
+            className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-xs font-medium transition-colors ${statusFilter === "ALL" ? "bg-[var(--samu-blue)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"}`}
           >
             Todas
           </button>
@@ -84,9 +84,9 @@ export function TurmasClient({
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
-                className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${statusFilter === s ? "bg-[var(--samu-blue)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"}`}
+                className={`shrink-0 whitespace-nowrap rounded px-2.5 py-1 text-xs font-medium transition-colors ${statusFilter === s ? "bg-[var(--samu-blue)] text-white" : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"}`}
               >
-                {s.replace(/_/g, " ")}
+                {TURMA_STATUS_LABELS[s as TurmaStatus]}
               </button>
             ),
           )}
@@ -101,8 +101,8 @@ export function TurmasClient({
           description="Ajuste os filtros ou cadastre uma nova turma"
         />
       ) : (
-        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Turma</th>

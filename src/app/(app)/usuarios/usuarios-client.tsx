@@ -180,7 +180,7 @@ export function UsuariosClient({
       </div>
 
       <div className="overflow-x-auto rounded-md border border-[var(--border-default)]">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[42rem] text-sm">
           <thead className="bg-[var(--bg-secondary)] text-left text-xs uppercase text-[var(--text-muted)]">
             <tr>
               <th className="px-4 py-3 font-medium">Nome</th>

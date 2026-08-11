@@ -340,7 +340,7 @@ export function ProfissionalDetail({
             </p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[42rem] text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-default)] text-left text-xs text-[var(--text-muted)]">
                     <th className="pb-2 font-medium">Curso</th>

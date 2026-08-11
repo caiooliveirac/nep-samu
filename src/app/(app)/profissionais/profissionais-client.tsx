@@ -256,7 +256,7 @@ export function ProfissionaisClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Profissionais</h1>
           <p className="text-sm text-[var(--text-secondary)]">
@@ -341,8 +341,8 @@ export function ProfissionaisClient({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
+        <table className="w-full min-w-[42rem] text-sm">
           <thead>
             <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
               <th
@@ -642,8 +642,8 @@ export function ProfissionaisClient({
                 Nenhum link gerado ainda
               </p>
             ) : (
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full text-sm">
+              <div className="max-h-96 overflow-auto">
+                <table className="w-full min-w-[42rem] text-sm">
                   <thead>
                     <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                       <th className="px-3 py-2">Unidade</th>

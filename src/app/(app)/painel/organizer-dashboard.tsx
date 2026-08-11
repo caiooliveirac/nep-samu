@@ -133,7 +133,7 @@ export function OrganizerDashboard() {
           </h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Turma</th>

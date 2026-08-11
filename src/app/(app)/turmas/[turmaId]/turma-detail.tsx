@@ -318,7 +318,7 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[42rem] text-sm">
                 <thead>
                   <tr className="border-b border-[var(--border-default)] text-left text-[var(--text-muted)]">
                     <th className="pb-2 font-medium">Nome</th>

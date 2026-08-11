@@ -27,7 +27,7 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold">Catálogo de Cursos</h1>
           <p className="text-sm text-[var(--text-secondary)]">
@@ -75,8 +75,8 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
           }
         />
       ) : (
-        <div className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
+          <table className="w-full min-w-[42rem] text-sm">
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Nome</th>
