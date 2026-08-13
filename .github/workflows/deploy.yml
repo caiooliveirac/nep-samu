@@ -2,6 +2,12 @@
 # A EC2 foi encerrada em julho/2026: nenhum passo aqui pode voltar a apontar
 # para ela. Sem secrets de SSH, sem host remoto — o runner já está dentro do
 # servidor de destino.
+#
+# Mesmo padrão validate → deploy dos outros apps (ex.: plantoes): um job
+# isolado, hospedado, roda lint/typecheck/testes/build antes de soltar o
+# self-hosted em cima da produção. Diferente do plantoes, não há passo de
+# SSH aqui — o runner self-hosted já é o próprio servidor — e o job de
+# validate não mexe em banco nenhum (ver nota no fim do arquivo).
 name: Deploy NEP SAMU (magalu)
 
 on:
@@ -16,8 +22,45 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Lint, typecheck e testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck (next typegen + tsc)
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
   deploy:
     name: Publicar em mnrs.com.br/NEP
+    needs: validate
     runs-on: [self-hosted, nep]
     steps:
       - name: Atualizar, construir e reiniciar
