@@ -1,0 +1,47 @@
+# Job de uso único, disparado só via workflow_dispatch — nunca em push. Faz
+# backup e aplica drizzle/0003_unidade_oculta.sql em produção antes do PR #4
+# ser mesclado (esse PR já lê/escreve unidades.oculta, então a coluna
+# precisa existir antes do deploy). Removido depois de confirmado.
+name: Migração manual (uso único) — unidades.oculta
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nep-samu
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup + aplicar drizzle/0003_unidade_oculta.sql
+    runs-on: [self-hosted, nep]
+    steps:
+      - name: Checkout (pega o SQL da branch do PR #4)
+        uses: actions/checkout@v4
+        with:
+          ref: claude/unidades-oculta-frontend
+
+      - name: Conferir ferramentas disponíveis
+        run: |
+          set -euo pipefail
+          command -v pg_dump >/dev/null || { echo "::error::pg_dump não encontrado no runner"; exit 1; }
+          command -v psql >/dev/null || { echo "::error::psql não encontrado no runner"; exit 1; }
+          test -f /home/ubuntu/nep-samu/.env || { echo "::error::.env não encontrado em /home/ubuntu/nep-samu"; exit 1; }
+
+      - name: Backup, aplicar migração e conferir
+        run: |
+          set -euo pipefail
+          set -a
+          source /home/ubuntu/nep-samu/.env
+          set +a
+
+          BACKUP_FILE=~/backup-nep-samu-pre-0003-$(date +%Y%m%d-%H%M%S).sql
+          echo "Fazendo backup em $BACKUP_FILE"
+          pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+          echo "Backup ok: $(du -h "$BACKUP_FILE" | cut -f1)"
+
+          echo "Aplicando drizzle/0003_unidade_oculta.sql"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_unidade_oculta.sql
+
+          echo "Conferindo coluna:"
+          psql "$DATABASE_URL" -c "SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name='unidades' AND column_name='oculta';"
