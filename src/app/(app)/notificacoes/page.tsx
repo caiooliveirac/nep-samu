@@ -1,5 +1,6 @@
 import { auth } from "@/server/auth/config";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/server/db";
 import { notificacoes } from "@/server/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -34,24 +35,43 @@ export default async function NotificacoesPage() {
         />
       ) : (
         <div className="space-y-2">
-          {userNotifs.map((n) => (
-            <div
-              key={n.id}
-              className={`rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 transition-colors ${!n.lidaEm ? "border-l-4 border-l-[var(--samu-orange)]" : ""}`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium">{n.titulo}</p>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    {n.corpo}
-                  </p>
+          {userNotifs.map((n) => {
+            // A notificação de cadastro pendente precisa levar a algum lugar:
+            // sem o link, o aviso era um beco sem saída e ninguém achava onde
+            // aprovar o vínculo.
+            const payload = n.payload as { userId?: string } | null;
+            const cadastroHref =
+              n.tipo === "CONVITE_CADASTRO" && payload?.userId
+                ? `/profissionais/${payload.userId}`
+                : null;
+
+            return (
+              <div
+                key={n.id}
+                className={`rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-4 transition-colors ${!n.lidaEm ? "border-l-4 border-l-[var(--samu-orange)]" : ""}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium">{n.titulo}</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      {n.corpo}
+                    </p>
+                    {cadastroHref && (
+                      <Link
+                        href={cadastroHref}
+                        className="mt-2 inline-block text-sm font-medium text-[var(--samu-blue)] hover:underline"
+                      >
+                        Ver cadastro e validar vínculo →
+                      </Link>
+                    )}
+                  </div>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {formatDateTime(n.createdAt)}
+                  </span>
                 </div>
-                <span className="text-xs text-[var(--text-muted)]">
-                  {formatDateTime(n.createdAt)}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

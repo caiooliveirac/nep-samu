@@ -14,7 +14,6 @@ import { toast } from "sonner";
 import {
   PROFISSOES,
   PROFISSAO_LABELS,
-  ENROLLMENT_STATUS_LABELS,
   type Profissao,
   type EnrollmentStatus,
 } from "@/lib/enums";
@@ -89,6 +88,7 @@ export function ProfissionalDetail({
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [vinculoSaving, setVinculoSaving] = useState<string | null>(null);
   const [selectedTurma, setSelectedTurma] = useState("");
   const [enrollUnidade, setEnrollUnidade] = useState(
     profissional.vinculos[0]?.unidade?.id || "",
@@ -125,17 +125,51 @@ export function ProfissionalDetail({
         body: JSON.stringify({
           nome: form.get("nome"),
           profissao: form.get("profissao") || undefined,
-          telefone: form.get("telefone") || undefined,
+          // Campo limpo viaja como "" de propósito: o servidor traduz para
+          // NULL — com `undefined` não haveria como apagar um telefone.
+          telefone: form.get("telefone") ?? "",
           unidadeId: form.get("unidadeId") || undefined,
         }),
       });
 
       toast.success("Profissional atualizado com sucesso");
       router.refresh();
-    } catch {
-      toast.error("Erro ao atualizar profissional");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar profissional",
+      );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleVinculoStatus(
+    vinculoId: string,
+    status: "ATIVO" | "INATIVO",
+  ) {
+    setVinculoSaving(vinculoId);
+    try {
+      await apiFetch(
+        `/api/usuarios/${profissional.id}/vinculos/${vinculoId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status }),
+        },
+      );
+      toast.success(
+        status === "ATIVO" ? "Vínculo aprovado/ativado" : "Vínculo desativado",
+      );
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao alterar o vínculo",
+      );
+    } finally {
+      setVinculoSaving(null);
     }
   }
 
@@ -211,6 +245,7 @@ export function ProfissionalDetail({
                 <select
                   id="profissao"
                   name="profissao"
+                  required
                   defaultValue={profissional.profissao || ""}
                   className={selectClass}
                 >
@@ -259,6 +294,108 @@ export function ProfissionalDetail({
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Vínculos com unidades — inclui a aprovação dos cadastros pendentes
+          feitos pelo link de convite */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Vínculos com Unidades</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {profissional.vinculos.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)]">
+              Nenhum vínculo — defina a unidade principal no formulário acima.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {!profissional.ativo &&
+                profissional.vinculos.some(
+                  (v) => v.status === "PENDENTE_VALIDACAO",
+                ) && (
+                  <p className="rounded-md border border-[var(--status-warning)]/40 bg-[var(--status-warning)]/10 p-3 text-sm text-[var(--text-secondary)]">
+                    A conta está aguardando validação: aprovar o vínculo
+                    pendente libera o acesso da pessoa ao sistema.
+                  </p>
+                )}
+              {profissional.vinculos.map((v) => (
+                <div
+                  key={v.id}
+                  className="flex items-center justify-between gap-3 rounded-md border border-[var(--border-default)] p-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate">
+                      {v.unidade?.nome}
+                      {v.unidade?.municipio && (
+                        <span className="ml-1 text-xs text-[var(--text-muted)]">
+                          {v.unidade.municipio.nome}
+                        </span>
+                      )}
+                    </div>
+                    <Badge
+                      className="mt-1"
+                      variant={
+                        v.status === "ATIVO"
+                          ? "outline"
+                          : v.status === "PENDENTE_VALIDACAO"
+                            ? "warning"
+                            : "neutral"
+                      }
+                    >
+                      {v.status === "ATIVO"
+                        ? "ativo"
+                        : v.status === "PENDENTE_VALIDACAO"
+                          ? "aguardando validação"
+                          : "inativo"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex shrink-0 gap-2">
+                    {v.status === "PENDENTE_VALIDACAO" && (
+                      <>
+                        <Button
+                          size="sm"
+                          disabled={vinculoSaving === v.id}
+                          onClick={() => handleVinculoStatus(v.id, "ATIVO")}
+                        >
+                          Aprovar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={vinculoSaving === v.id}
+                          onClick={() => handleVinculoStatus(v.id, "INATIVO")}
+                        >
+                          Recusar
+                        </Button>
+                      </>
+                    )}
+                    {v.status === "ATIVO" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={vinculoSaving === v.id}
+                        onClick={() => handleVinculoStatus(v.id, "INATIVO")}
+                      >
+                        Desativar
+                      </Button>
+                    )}
+                    {v.status === "INATIVO" && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={vinculoSaving === v.id}
+                        onClick={() => handleVinculoStatus(v.id, "ATIVO")}
+                      >
+                        Reativar
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

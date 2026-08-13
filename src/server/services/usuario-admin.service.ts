@@ -1,11 +1,16 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/server/db";
-import type { Profissao, Role } from "@/lib/enums";
-import { users, vinculos } from "@/server/db/schema";
+import type { Profissao, Role, VinculoStatus } from "@/lib/enums";
+import { unidades, users, vinculos } from "@/server/db/schema";
 import { logAudit } from "@/server/services/audit.service";
-import { ConflictError, NotFoundError, ValidationError } from "@/server/lib/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  ValidationError,
+} from "@/server/lib/errors";
 
 /**
  * Administração de contas pelo organizador: trocar o email de quem não recebe
@@ -70,13 +75,67 @@ export async function listarUsuarios() {
   }));
 }
 
+/**
+ * A forma que a tela de Usuários consome — a MESMA no primeiro render e no
+ * refetch do cliente. Quando cada lado achatava a lista do seu jeito, a coluna
+ * de unidade sumia da tabela logo depois de qualquer salvamento.
+ */
+export async function listarUsuariosParaTela() {
+  const lista = await listarUsuarios();
+  return lista.map((u) => ({
+    id: u.id,
+    nome: u.nome,
+    email: u.email,
+    role: u.role,
+    profissao: u.profissao,
+    telefone: u.telefone,
+    ativo: u.ativo,
+    mustChangePassword: u.mustChangePassword,
+    emailRecebe: u.emailRecebe,
+    vinculos: (u.vinculos ?? []).map((v) => ({
+      id: v.id,
+      unidadeId: v.unidadeId,
+      unidadeNome: v.unidade?.nome ?? "",
+      status: v.status,
+      isCoordenador: v.isCoordenador,
+    })),
+  }));
+}
+
 async function carregar(userId: string) {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
-    columns: { id: true, nome: true, email: true, role: true, ativo: true, profissao: true },
+    columns: {
+      id: true,
+      nome: true,
+      email: true,
+      role: true,
+      ativo: true,
+      profissao: true,
+      telefone: true,
+    },
   });
   if (!user) throw new NotFoundError("Usuário");
   return user;
+}
+
+/**
+ * O último organizador ativo é a chave da porta: rebaixá-lo ou desativá-lo
+ * deixaria o sistema sem ninguém capaz de administrar contas.
+ */
+async function garantirOutroOrganizadorAtivo(userId: string, acao: string) {
+  const organizadores = await db.query.users.findMany({
+    where: eq(users.role, "ORGANIZADOR"),
+    columns: { id: true, ativo: true },
+  });
+  const outrosAtivos = organizadores.filter(
+    (u) => u.id !== userId && u.ativo,
+  ).length;
+  if (outrosAtivos === 0) {
+    throw new ValidationError(
+      `Este é o único organizador ativo — promova outra pessoa antes de ${acao}.`,
+    );
+  }
 }
 
 export async function trocarEmail(
@@ -178,18 +237,7 @@ export async function trocarPapel(
   }
 
   if (alvo.role === "ORGANIZADOR" && dados.role !== "ORGANIZADOR") {
-    const organizadores = await db.query.users.findMany({
-      where: eq(users.role, "ORGANIZADOR"),
-      columns: { id: true, ativo: true },
-    });
-    const outrosAtivos = organizadores.filter(
-      (u) => u.id !== userId && u.ativo,
-    ).length;
-    if (outrosAtivos === 0) {
-      throw new ValidationError(
-        "Este é o único organizador ativo — promova outra pessoa antes de rebaixá-lo.",
-      );
-    }
+    await garantirOutroOrganizadorAtivo(userId, "rebaixá-lo");
   }
 
   if (dados.role !== "ORGANIZADOR" && !dados.unidadeId) {
@@ -242,6 +290,20 @@ export async function trocarPapel(
         isCoordenador: coordena,
       });
     }
+
+    // A unidade escolhida aqui é onde a pessoa está agora: sem esta linha, quem
+    // muda de unidade acumula vínculos ATIVOS para sempre — segue contando (e
+    // podendo se matricular) pela unidade antiga.
+    await tx
+      .update(vinculos)
+      .set({ status: "INATIVO", updatedAt: new Date() })
+      .where(
+        and(
+          eq(vinculos.userId, userId),
+          ne(vinculos.unidadeId, dados.unidadeId),
+          eq(vinculos.status, "ATIVO"),
+        ),
+      );
   });
 
   await logAudit({
@@ -256,4 +318,253 @@ export async function trocarPapel(
   });
 
   return { id: userId, role: dados.role };
+}
+
+/**
+ * Edita os dados cadastrais que a tela de Usuários mostra mas não deixava
+ * tocar: nome, telefone e profissão. `ativo` entra junto porque desativar a
+ * conta é a forma de "remover" alguém sem perder histórico de matrículas e
+ * auditoria — não existe apagar usuário.
+ */
+export async function editarUsuario(
+  adminId: string,
+  userId: string,
+  dados: {
+    nome?: string;
+    telefone?: string | null;
+    profissao?: Profissao | null;
+    ativo?: boolean;
+  },
+  ctx: { ip?: string; userAgent?: string } = {},
+) {
+  const alvo = await carregar(userId);
+
+  if (dados.ativo === false && alvo.ativo) {
+    if (adminId === userId) {
+      throw new ValidationError(
+        "Você não pode desativar a própria conta — peça a outro organizador.",
+      );
+    }
+    if (alvo.role === "ORGANIZADOR") {
+      await garantirOutroOrganizadorAtivo(userId, "desativá-lo");
+    }
+  }
+
+  const mudancas: Partial<{
+    nome: string;
+    telefone: string | null;
+    profissao: Profissao | null;
+    ativo: boolean;
+  }> = {};
+  if (dados.nome !== undefined && dados.nome !== alvo.nome) {
+    mudancas.nome = dados.nome;
+  }
+  if (dados.telefone !== undefined && dados.telefone !== alvo.telefone) {
+    mudancas.telefone = dados.telefone;
+  }
+  if (dados.profissao !== undefined && dados.profissao !== alvo.profissao) {
+    mudancas.profissao = dados.profissao;
+  }
+  if (dados.ativo !== undefined && dados.ativo !== alvo.ativo) {
+    mudancas.ativo = dados.ativo;
+  }
+
+  if (Object.keys(mudancas).length === 0) {
+    throw new ValidationError("Nenhum dado foi alterado.");
+  }
+
+  const [atualizado] = await db
+    .update(users)
+    .set({ ...mudancas, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({
+      id: users.id,
+      nome: users.nome,
+      telefone: users.telefone,
+      profissao: users.profissao,
+      ativo: users.ativo,
+    });
+
+  const antes: Record<string, unknown> = {};
+  for (const campo of Object.keys(mudancas)) {
+    antes[campo] = alvo[campo as keyof typeof alvo] ?? null;
+  }
+
+  await logAudit({
+    userId: adminId,
+    action:
+      mudancas.ativo !== undefined
+        ? "usuario.ativo_alterado"
+        : "usuario.dados_alterados",
+    entityType: "user",
+    entityId: userId,
+    oldValue: antes,
+    newValue: mudancas,
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  return atualizado;
+}
+
+/**
+ * Vínculo nunca é apagado: INATIVO preserva o histórico (as matrículas contam
+ * a unidade da época) e o índice único (userId, unidadeId) transforma a
+ * "re-adição" em reativação da mesma linha.
+ */
+export async function criarVinculo(
+  adminId: string,
+  userId: string,
+  unidadeId: string,
+  ctx: { ip?: string; userAgent?: string } = {},
+) {
+  await carregar(userId);
+
+  const unidade = await db.query.unidades.findFirst({
+    where: eq(unidades.id, unidadeId),
+    columns: { id: true, nome: true, ativo: true },
+  });
+  if (!unidade) throw new NotFoundError("Unidade");
+  if (!unidade.ativo) {
+    throw new ValidationError("Esta unidade está inativa.");
+  }
+
+  const existente = await db.query.vinculos.findFirst({
+    where: and(eq(vinculos.userId, userId), eq(vinculos.unidadeId, unidadeId)),
+  });
+
+  if (existente?.status === "ATIVO") {
+    throw new ConflictError("A pessoa já tem vínculo ativo com esta unidade.");
+  }
+
+  let vinculoId: string;
+  if (existente) {
+    await db
+      .update(vinculos)
+      .set({ status: "ATIVO", updatedAt: new Date() })
+      .where(eq(vinculos.id, existente.id));
+    vinculoId = existente.id;
+  } else {
+    const [novo] = await db
+      .insert(vinculos)
+      .values({ userId, unidadeId, status: "ATIVO", isCoordenador: false })
+      .returning({ id: vinculos.id });
+    vinculoId = novo.id;
+  }
+
+  await logAudit({
+    userId: adminId,
+    action: existente ? "vinculo.reativado" : "vinculo.criado",
+    entityType: "vinculo",
+    entityId: vinculoId,
+    oldValue: existente ? { status: existente.status } : undefined,
+    newValue: { userId, unidadeId, status: "ATIVO" },
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  return {
+    id: vinculoId,
+    unidadeId,
+    unidadeNome: unidade.nome,
+    status: "ATIVO" as const,
+    isCoordenador: existente?.isCoordenador ?? false,
+  };
+}
+
+/**
+ * Aprova (PENDENTE_VALIDACAO → ATIVO), desativa ou reativa um vínculo.
+ * Organizador mexe em qualquer um; coordenador só nos vínculos das unidades
+ * que coordena, e só de profissionais — é o portão de validação que o
+ * convite de cadastro promete.
+ */
+export async function alterarStatusVinculo(
+  actor: { id: string; role: Role },
+  userId: string,
+  vinculoId: string,
+  status: Extract<VinculoStatus, "ATIVO" | "INATIVO">,
+  ctx: { ip?: string; userAgent?: string } = {},
+) {
+  const alvo = await carregar(userId);
+
+  const vinculo = await db.query.vinculos.findFirst({
+    where: and(eq(vinculos.id, vinculoId), eq(vinculos.userId, userId)),
+    with: { unidade: { columns: { id: true, nome: true } } },
+  });
+  if (!vinculo) throw new NotFoundError("Vínculo");
+
+  if (actor.role !== "ORGANIZADOR") {
+    // Coordenador valida gente da própria casa, não do sistema inteiro.
+    if (alvo.role !== "PROFISSIONAL") throw new ForbiddenError();
+    const coordena = await db.query.vinculos.findFirst({
+      where: and(
+        eq(vinculos.userId, actor.id),
+        eq(vinculos.unidadeId, vinculo.unidadeId),
+        eq(vinculos.isCoordenador, true),
+        eq(vinculos.status, "ATIVO"),
+      ),
+      columns: { id: true },
+    });
+    if (!coordena) {
+      throw new ForbiddenError(
+        "Você só pode validar vínculos da unidade que coordena.",
+      );
+    }
+  }
+
+  if (vinculo.status === status) {
+    throw new ValidationError("O vínculo já está neste estado.");
+  }
+
+  if (
+    status === "INATIVO" &&
+    vinculo.isCoordenador &&
+    alvo.role === "COORDENADOR"
+  ) {
+    throw new ValidationError(
+      "Este vínculo carrega a coordenação — troque o papel ou a unidade da pessoa antes de desativá-lo.",
+    );
+  }
+
+  const aprovacao = vinculo.status === "PENDENTE_VALIDACAO" && status === "ATIVO";
+  const ativaConta = aprovacao && !alvo.ativo;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(vinculos)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(vinculos.id, vinculoId));
+
+    // Cadastro via convite nasce com a conta desativada ("acesso após a
+    // aprovação"): aprovar o vínculo pendente é o que liga a conta.
+    if (ativaConta) {
+      await tx
+        .update(users)
+        .set({ ativo: true, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+  });
+
+  await logAudit({
+    userId: actor.id,
+    action: aprovacao ? "vinculo.aprovado" : "vinculo.status_alterado",
+    entityType: "vinculo",
+    entityId: vinculoId,
+    oldValue: { status: vinculo.status },
+    newValue: {
+      status,
+      unidadeId: vinculo.unidadeId,
+      ...(ativaConta ? { contaAtivada: true } : {}),
+    },
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  return {
+    id: vinculoId,
+    status,
+    unidadeId: vinculo.unidadeId,
+    unidadeNome: vinculo.unidade.nome,
+    isCoordenador: vinculo.isCoordenador,
+  };
 }

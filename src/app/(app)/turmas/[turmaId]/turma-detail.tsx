@@ -151,7 +151,8 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
       await apiFetch(`/api/turmas/${turma.id}/inscrever`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ unidadeId: "" }), // será preenchido pelo backend via vínculo
+        // O servidor resolve a unidade pelo vínculo ativo da pessoa.
+        body: JSON.stringify({}),
       });
       toast.success("Inscrição realizada com sucesso!");
       router.refresh();

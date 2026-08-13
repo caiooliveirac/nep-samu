@@ -23,7 +23,7 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState<null | { existente: boolean }>(null);
 
   const selectClass =
     "flex h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]";
@@ -34,11 +34,14 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
     setLoading(true);
 
     try {
-      await apiFetch(`/api/convites/${token}/registrar`, {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
-      setSuccess(true);
+      const r = await apiFetch<{ existente?: boolean }>(
+        `/api/convites/${token}/registrar`,
+        {
+          method: "POST",
+          body: JSON.stringify(form),
+        },
+      );
+      setSuccess({ existente: r.existente ?? false });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -57,11 +60,12 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
           <span className="text-lg text-white">✓</span>
         </div>
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-          Cadastro realizado!
+          {success.existente ? "Vínculo solicitado!" : "Cadastro realizado!"}
         </h2>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Seu cadastro foi enviado para validação do coordenador. Você poderá
-          acessar o sistema após a aprovação.
+          {success.existente
+            ? `Você já tinha conta no sistema — o vínculo com ${unidade.nome} foi solicitado e vale depois que o coordenador aprovar. Enquanto isso, sua conta continua funcionando normalmente.`
+            : "Seu cadastro foi enviado para validação do coordenador. Você poderá acessar o sistema após a aprovação."}
         </p>
         <a
           href={`${process.env.NEXT_PUBLIC_BASE_PATH || "/NEP"}/login`}
@@ -157,11 +161,15 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
           id="senha"
           type="password"
           required
-          minLength={6}
+          minLength={10}
           value={form.senha}
           onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))}
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo 10 caracteres"
         />
+        <p className="text-xs text-[var(--text-muted)]">
+          Pelo menos 10 caracteres, combinando três de: minúscula, maiúscula,
+          número e símbolo.
+        </p>
       </div>
 
       {error && (

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { z } from "zod/v4";
 import { auth } from "@/server/auth/config";
 import { apiError, apiSuccess } from "@/server/lib/utils";
 import { ForbiddenError, ValidationError } from "@/server/lib/errors";
@@ -6,7 +7,11 @@ import { hasPermission } from "@/server/auth/rbac";
 import { getRequestIp } from "@/server/lib/rate-limit";
 import type { Role } from "@/lib/enums";
 import { isValidUUID } from "@/lib/schemas";
-import { resetarSenha } from "@/server/services/usuario-admin.service";
+import { criarVinculo } from "@/server/services/usuario-admin.service";
+
+const schema = z.object({
+  unidadeId: z.string().uuid("Selecione uma unidade"),
+});
 
 export async function POST(
   req: NextRequest,
@@ -24,13 +29,24 @@ export async function POST(
       throw new ValidationError("Identificador de usuário inválido");
     }
 
-    // A senha em claro volta uma vez só, para o organizador entregar à pessoa.
-    const resultado = await resetarSenha(session.user.id, userId, {
-      ip: getRequestIp(req.headers),
-      userAgent: req.headers.get("user-agent") ?? undefined,
-    });
+    const parsed = schema.safeParse(await req.json().catch(() => null));
+    if (!parsed.success) {
+      throw new ValidationError(
+        parsed.error?.issues[0]?.message ?? "Dados inválidos",
+      );
+    }
 
-    return apiSuccess(resultado);
+    const vinculo = await criarVinculo(
+      session.user.id,
+      userId,
+      parsed.data.unidadeId,
+      {
+        ip: getRequestIp(req.headers),
+        userAgent: req.headers.get("user-agent") ?? undefined,
+      },
+    );
+
+    return apiSuccess(vinculo, 201);
   } catch (error) {
     return apiError(error);
   }
