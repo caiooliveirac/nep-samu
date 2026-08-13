@@ -1,0 +1,51 @@
+# Gate de PR, no mesmo espírito do CI (PR) usado nos outros apps (ex.:
+# plantoes): lint, typecheck, testes e build isolados num runner hospedado,
+# antes de qualquer coisa chegar perto de main — main é o que o deploy
+# self-hosted (deploy.yml) publica automaticamente em mnrs.com.br/NEP.
+name: CI (PR)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Lint, typecheck, testes e build
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck (next typegen + tsc)
+        run: pnpm typecheck
+
+      - name: Testes
+        run: pnpm test
+
+      # Não precisa de DATABASE_URL: as rotas são todas dinâmicas
+      # (renderizadas por requisição), nenhuma página estática consulta o
+      # banco no build.
+      - name: Build
+        run: pnpm build
