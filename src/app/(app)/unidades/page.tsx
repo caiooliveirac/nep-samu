@@ -8,9 +8,20 @@ export default async function UnidadesPage() {
   if (!session?.user) redirect("/login");
   if (session.user.role !== "ORGANIZADOR") redirect("/painel");
 
-  const allUnidades = await db.query.unidades.findMany({
-    with: { municipio: true },
-  });
+  const [allUnidades, allMunicipios] = await Promise.all([
+    db.query.unidades.findMany({
+      with: { municipio: true },
+    }),
+    db.query.municipios.findMany({
+      where: (m, { eq }) => eq(m.ativo, true),
+      orderBy: (m, { asc }) => [asc(m.nome)],
+    }),
+  ]);
 
-  return <UnidadesClient unidades={allUnidades} />;
+  return (
+    <UnidadesClient
+      unidades={allUnidades}
+      municipios={allMunicipios.map((m) => ({ id: m.id, nome: m.nome }))}
+    />
+  );
 }
