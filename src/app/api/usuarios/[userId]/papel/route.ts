@@ -6,6 +6,7 @@ import { ForbiddenError, ValidationError } from "@/server/lib/errors";
 import { hasPermission } from "@/server/auth/rbac";
 import { getRequestIp } from "@/server/lib/rate-limit";
 import { PROFISSOES, ROLES, type Role } from "@/lib/enums";
+import { isValidUUID } from "@/lib/schemas";
 import { trocarPapel } from "@/server/services/usuario-admin.service";
 
 const schema = z.object({
@@ -26,6 +27,10 @@ export async function PUT(
     }
 
     const { userId } = await params;
+    if (!isValidUUID(userId)) {
+      throw new ValidationError("Identificador de usuário inválido");
+    }
+
     const parsed = schema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) {
       throw new ValidationError(

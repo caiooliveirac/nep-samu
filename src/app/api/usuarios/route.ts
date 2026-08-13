@@ -3,7 +3,7 @@ import { apiError, apiSuccess } from "@/server/lib/utils";
 import { ForbiddenError } from "@/server/lib/errors";
 import { hasPermission } from "@/server/auth/rbac";
 import type { Role } from "@/lib/enums";
-import { listarUsuarios } from "@/server/services/usuario-admin.service";
+import { listarUsuariosParaTela } from "@/server/services/usuario-admin.service";
 
 export async function GET() {
   try {
@@ -13,7 +13,7 @@ export async function GET() {
       return apiError(new ForbiddenError());
     }
 
-    return apiSuccess(await listarUsuarios());
+    return apiSuccess(await listarUsuariosParaTela());
   } catch (error) {
     return apiError(error);
   }
