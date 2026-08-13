@@ -2,7 +2,15 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Power,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,10 +96,59 @@ export function UnidadesClient({
   unidades: Unidade[];
   municipios: Municipio[];
 }) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   // "nova" abre o modal vazio; uma Unidade abre em modo edição.
   const [modal, setModal] = useState<Unidade | "nova" | null>(null);
+  const [processando, setProcessando] = useState<string | null>(null);
+
+  async function excluir(u: Unidade) {
+    if (
+      !confirm(
+        `Excluir a unidade ${u.nome}? Essa ação não pode ser desfeita.`,
+      )
+    )
+      return;
+    setProcessando(u.id);
+    try {
+      await apiFetch(`/api/unidades/${u.id}`, { method: "DELETE" });
+      toast.success("Unidade excluída.");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível excluir a unidade.",
+      );
+    } finally {
+      setProcessando(null);
+    }
+  }
+
+  async function alternarAtivo(u: Unidade) {
+    const pergunta = u.ativo
+      ? `Desativar a unidade ${u.nome}? Ela deixa de receber novos vínculos e convites.`
+      : `Reativar a unidade ${u.nome}?`;
+    if (!confirm(pergunta)) return;
+    setProcessando(u.id);
+    try {
+      await apiFetch(`/api/unidades/${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ativo: !u.ativo }),
+      });
+      toast.success(u.ativo ? "Unidade desativada." : "Unidade reativada.");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível alterar o status da unidade.",
+      );
+    } finally {
+      setProcessando(null);
+    }
+  }
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -210,9 +267,28 @@ export function UnidadesClient({
                         size="sm"
                         variant="ghost"
                         onClick={() => setModal(u)}
+                        disabled={processando === u.id}
                         title="Editar unidade"
                       >
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => alternarAtivo(u)}
+                        disabled={processando === u.id}
+                        title={u.ativo ? "Desativar unidade" : "Reativar unidade"}
+                      >
+                        <Power className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => excluir(u)}
+                        disabled={processando === u.id}
+                        title="Excluir unidade"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
