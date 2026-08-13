@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Bell,
   BarChart3,
+  CircleUser,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -30,6 +31,11 @@ const navItems: NavItem[] = [
     label: "Painel",
     href: "/painel",
     icon: LayoutDashboard,
+  },
+  {
+    label: "Meu Perfil",
+    href: "/perfil",
+    icon: CircleUser,
   },
   {
     label: "Cursos",
