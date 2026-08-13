@@ -13,6 +13,7 @@ export type Permission =
   | "turma:manage_attendance"
   | "unidade:create"
   | "unidade:edit"
+  | "unidade:delete"
   | "profissional:create"
   | "profissional:validate"
   | "profissional:invite"
@@ -39,6 +40,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     "turma:manage_attendance",
     "unidade:create",
     "unidade:edit",
+    "unidade:delete",
     "profissional:create",
     "profissional:validate",
     "profissional:invite",

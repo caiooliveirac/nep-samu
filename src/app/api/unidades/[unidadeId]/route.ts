@@ -1,10 +1,19 @@
 import { NextRequest } from "next/server";
 import { z } from "zod/v4";
 import { db } from "@/server/db";
-import { municipios, unidades } from "@/server/db/schema";
+import {
+  convites,
+  cotas,
+  enrollments,
+  municipios,
+  turmasUnidades,
+  unidades,
+  vinculos,
+} from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
 import { apiError, apiSuccess } from "@/server/lib/utils";
 import {
+  ConflictError,
   ForbiddenError,
   NotFoundError,
   ValidationError,
@@ -107,6 +116,77 @@ export async function PATCH(
     });
 
     return apiSuccess(atualizada);
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+// Apagar é permitido só quando a unidade nunca foi usada: sem vínculo,
+// turma elegível, cota, matrícula ou convite apontando pra ela. Havendo
+// qualquer um desses, a unidade fica só desativável — apagar apagaria
+// histórico de outras entidades junto.
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ unidadeId: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) return apiError(new ForbiddenError());
+    if (!hasPermission(session.user.role as Role, "unidade:delete")) {
+      return apiError(new ForbiddenError());
+    }
+
+    const { unidadeId } = await params;
+    if (!isValidUUID(unidadeId)) {
+      throw new ValidationError("Identificador de unidade inválido");
+    }
+
+    const existente = await db.query.unidades.findFirst({
+      where: eq(unidades.id, unidadeId),
+    });
+    if (!existente) return apiError(new NotFoundError("Unidade"));
+
+    const [
+      vinculo,
+      turmaElegivel,
+      cota,
+      matricula,
+      convite,
+    ] = await Promise.all([
+      db.query.vinculos.findFirst({ where: eq(vinculos.unidadeId, unidadeId) }),
+      db.query.turmasUnidades.findFirst({
+        where: eq(turmasUnidades.unidadeId, unidadeId),
+      }),
+      db.query.cotas.findFirst({ where: eq(cotas.unidadeId, unidadeId) }),
+      db.query.enrollments.findFirst({
+        where: eq(enrollments.unidadeId, unidadeId),
+      }),
+      db.query.convites.findFirst({ where: eq(convites.unidadeId, unidadeId) }),
+    ]);
+
+    if (vinculo || turmaElegivel || cota || matricula || convite) {
+      throw new ConflictError(
+        "Unidade possui vínculos, turmas, matrículas ou convites associados e não pode ser excluída. Desative-a para preservar o histórico.",
+      );
+    }
+
+    await db.delete(unidades).where(eq(unidades.id, unidadeId));
+
+    await logAudit({
+      userId: session.user.id,
+      action: "unidade.excluida",
+      entityType: "unidade",
+      entityId: unidadeId,
+      oldValue: {
+        nome: existente.nome,
+        tipo: existente.tipo,
+        municipioId: existente.municipioId,
+      },
+      ipAddress: getRequestIp(req.headers),
+      userAgent: req.headers.get("user-agent") ?? undefined,
+    });
+
+    return apiSuccess({ id: unidadeId });
   } catch (error) {
     return apiError(error);
   }
