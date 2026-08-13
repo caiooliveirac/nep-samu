@@ -526,21 +526,36 @@ export async function alterarStatusVinculo(
     );
   }
 
-  await db
-    .update(vinculos)
-    .set({ status, updatedAt: new Date() })
-    .where(eq(vinculos.id, vinculoId));
+  const aprovacao = vinculo.status === "PENDENTE_VALIDACAO" && status === "ATIVO";
+  const ativaConta = aprovacao && !alvo.ativo;
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(vinculos)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(vinculos.id, vinculoId));
+
+    // Cadastro via convite nasce com a conta desativada ("acesso após a
+    // aprovação"): aprovar o vínculo pendente é o que liga a conta.
+    if (ativaConta) {
+      await tx
+        .update(users)
+        .set({ ativo: true, updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    }
+  });
 
   await logAudit({
     userId: actor.id,
-    action:
-      vinculo.status === "PENDENTE_VALIDACAO" && status === "ATIVO"
-        ? "vinculo.aprovado"
-        : "vinculo.status_alterado",
+    action: aprovacao ? "vinculo.aprovado" : "vinculo.status_alterado",
     entityType: "vinculo",
     entityId: vinculoId,
     oldValue: { status: vinculo.status },
-    newValue: { status, unidadeId: vinculo.unidadeId },
+    newValue: {
+      status,
+      unidadeId: vinculo.unidadeId,
+      ...(ativaConta ? { contaAtivada: true } : {}),
+    },
     ipAddress: ctx.ip,
     userAgent: ctx.userAgent,
   });

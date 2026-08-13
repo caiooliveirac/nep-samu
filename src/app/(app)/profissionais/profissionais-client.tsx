@@ -50,6 +50,7 @@ interface UnidadeOption {
 interface Convite {
   id: string;
   token: string;
+  usado: boolean;
   expiraEm: string;
   createdAt: string;
   unidade: UnidadeOption | null;
@@ -607,8 +608,9 @@ export function ProfissionaisClient({
                   <p className="text-sm text-[var(--status-success-fg)]">Link copiado!</p>
                 )}
                 <p className="text-xs text-[var(--text-muted)]">
-                  O link é válido por 30 dias. Compartilhe com os profissionais
-                  da unidade para que façam o autocadastro.
+                  O link vale para um único cadastro e expira em 30 dias. Gere
+                  um link para cada profissional da unidade; o cadastro só
+                  passa a valer depois que você aprovar o vínculo.
                 </p>
                 <div className="flex justify-end">
                   <Button variant="outline" onClick={() => setShowConvite(false)}>
@@ -672,14 +674,18 @@ export function ProfissionaisClient({
                             <span className={expirado ? "text-[var(--status-danger-fg)]" : ""}>
                               {new Date(c.expiraEm).toLocaleDateString("pt-BR")}
                             </span>
-                            {expirado && (
+                            {c.usado ? (
+                              <Badge variant="neutral" className="ml-1">
+                                Usado
+                              </Badge>
+                            ) : expirado ? (
                               <Badge variant="outline" className="ml-1 text-[var(--status-danger-fg)] border-[var(--status-danger-fg)]">
                                 Expirado
                               </Badge>
-                            )}
+                            ) : null}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {!expirado && (
+                            {!expirado && !c.usado && (
                               <Button
                                 variant="ghost"
                                 size="icon"
