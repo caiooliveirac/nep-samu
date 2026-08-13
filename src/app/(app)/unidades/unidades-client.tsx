@@ -10,6 +10,7 @@ import {
   ArrowDown,
   Trash2,
   Power,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ interface Unidade {
   tipo: string;
   endereco: string | null;
   ativo: boolean;
+  oculta: boolean;
   municipio: { id: string; nome: string } | null;
 }
 
@@ -102,24 +104,29 @@ export function UnidadesClient({
   // "nova" abre o modal vazio; uma Unidade abre em modo edição.
   const [modal, setModal] = useState<Unidade | "nova" | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
+  // Excluir só esconde da lista — a linha continua no banco, com todo o
+  // histórico. Sem isto não dava pra achar de volta uma unidade escondida
+  // por engano.
+  const [mostrarOcultas, setMostrarOcultas] = useState(false);
 
-  async function excluir(u: Unidade) {
-    if (
-      !confirm(
-        `Excluir a unidade ${u.nome}? Essa ação não pode ser desfeita.`,
-      )
-    )
-      return;
+  async function alternarOculta(u: Unidade) {
+    const pergunta = u.oculta
+      ? `Mostrar a unidade ${u.nome} na lista de novo?`
+      : `Excluir a unidade ${u.nome} da lista? Ela continua no banco, com todo o histórico, e você pode trazer de volta a qualquer momento em "mostrar ocultas".`;
+    if (!confirm(pergunta)) return;
     setProcessando(u.id);
     try {
-      await apiFetch(`/api/unidades/${u.id}`, { method: "DELETE" });
-      toast.success("Unidade excluída.");
+      await apiFetch(`/api/unidades/${u.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ oculta: !u.oculta }),
+      });
+      toast.success(u.oculta ? "Unidade restaurada." : "Unidade excluída da lista.");
       router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Não foi possível excluir a unidade.",
+          : "Não foi possível alterar a unidade.",
       );
     } finally {
       setProcessando(null);
@@ -165,8 +172,12 @@ export function UnidadesClient({
     }
   }
 
+  const ocultasCount = unidades.filter((u) => u.oculta).length;
+
   const sorted = useMemo(() => {
-    const arr = [...unidades];
+    const arr = (
+      mostrarOcultas ? unidades : unidades.filter((u) => !u.oculta)
+    ).slice();
     if (!sortKey) return arr.sort(defaultSort);
 
     return arr.sort((a, b) => {
@@ -180,7 +191,7 @@ export function UnidadesClient({
       }
       return sortDir === "desc" ? -cmp : cmp;
     });
-  }, [unidades, sortKey, sortDir]);
+  }, [unidades, sortKey, sortDir, mostrarOcultas]);
 
   return (
     <div className="space-y-6">
@@ -188,7 +199,21 @@ export function UnidadesClient({
         <div>
           <h1 className="font-display text-2xl font-bold">Unidades</h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            {unidades.length} unidade(s) cadastrada(s)
+            {unidades.length - ocultasCount} unidade(s) cadastrada(s)
+            {ocultasCount > 0 && (
+              <>
+                {" "}·{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2 hover:text-[var(--text-primary)]"
+                  onClick={() => setMostrarOcultas((v) => !v)}
+                >
+                  {mostrarOcultas
+                    ? "ocultar excluídas"
+                    : `mostrar ${ocultasCount} excluída(s)`}
+                </button>
+              </>
+            )}
           </p>
         </div>
         <Button onClick={() => setModal("nova")}>
@@ -237,7 +262,10 @@ export function UnidadesClient({
               sorted.map((u) => (
                 <tr
                   key={u.id}
-                  className="border-b border-[var(--border-muted)] transition-colors hover:bg-[var(--bg-tertiary)]"
+                  className={
+                    "border-b border-[var(--border-muted)] transition-colors hover:bg-[var(--bg-tertiary)]" +
+                    (u.oculta ? " opacity-60" : "")
+                  }
                 >
                   <td className="px-5 py-3 font-medium">{u.nome}</td>
                   <td className="px-5 py-3">
@@ -251,15 +279,22 @@ export function UnidadesClient({
                   {/* Quase toda unidade está ativa: destacar as 28 iguais só
                       esconde a exceção. Ativo fica discreto, inativo grita. */}
                   <td className="px-5 py-3">
-                    {u.ativo ? (
-                      <span className="text-xs text-[var(--text-muted)]">
-                        Ativo
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded bg-[var(--solid-neutral)] px-2 py-0.5 text-xs font-medium text-white">
-                        Inativo
-                      </span>
-                    )}
+                    <div className="flex flex-wrap gap-1">
+                      {u.ativo ? (
+                        <span className="text-xs text-[var(--text-muted)]">
+                          Ativo
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded bg-[var(--solid-neutral)] px-2 py-0.5 text-xs font-medium text-white">
+                          Inativo
+                        </span>
+                      )}
+                      {u.oculta && (
+                        <span className="inline-flex items-center rounded border border-[var(--border-default)] px-2 py-0.5 text-xs font-medium text-[var(--text-muted)]">
+                          Excluída
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex justify-end">
@@ -281,15 +316,27 @@ export function UnidadesClient({
                       >
                         <Power className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => excluir(u)}
-                        disabled={processando === u.id}
-                        title="Excluir unidade"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {u.oculta ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => alternarOculta(u)}
+                          disabled={processando === u.id}
+                          title="Restaurar unidade"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => alternarOculta(u)}
+                          disabled={processando === u.id}
+                          title="Excluir unidade (some da lista, continua no banco)"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

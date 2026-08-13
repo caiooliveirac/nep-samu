@@ -38,6 +38,9 @@ const updateSchema = z
     // Unidade não é apagada: desativar preserva vínculos e histórico de
     // matrículas que apontam para ela.
     ativo: z.boolean().optional(),
+    // "Excluir" na tela = oculta:true. A linha continua no banco, com todo
+    // o histórico; só some da lista por padrão.
+    oculta: z.boolean().optional(),
   })
   .refine((d) => Object.values(d).some((v) => v !== undefined), {
     message: "Informe ao menos um campo para alterar",
@@ -85,12 +88,14 @@ export async function PATCH(
       municipioId: string;
       endereco: string | null;
       ativo: boolean;
+      oculta: boolean;
     }> = {};
     if (dados.nome !== undefined) mudancas.nome = dados.nome;
     if (dados.tipo !== undefined) mudancas.tipo = dados.tipo;
     if (dados.municipioId !== undefined) mudancas.municipioId = dados.municipioId;
     if (dados.endereco !== undefined) mudancas.endereco = dados.endereco || null;
     if (dados.ativo !== undefined) mudancas.ativo = dados.ativo;
+    if (dados.oculta !== undefined) mudancas.oculta = dados.oculta;
 
     const [atualizada] = await db
       .update(unidades)
@@ -109,6 +114,7 @@ export async function PATCH(
         municipioId: existente.municipioId,
         endereco: existente.endereco,
         ativo: existente.ativo,
+        oculta: existente.oculta,
       },
       newValue: mudancas,
       ipAddress: getRequestIp(req.headers),
