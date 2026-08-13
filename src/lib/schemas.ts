@@ -1,4 +1,13 @@
 import { z } from "zod/v4";
+import { getPasswordPolicyError } from "@/server/lib/password-policy";
+
+// O login continua aceitando senhas curtas herdadas; a régua nova vale para
+// senhas NOVAS (cadastro e troca). Sem isto o cadastro aceitava "123456" e a
+// mesma pessoa era barrada ao tentar trocar de senha depois.
+const senhaForte = z.string().superRefine((senha, ctx) => {
+  const erro = getPasswordPolicyError(senha);
+  if (erro) ctx.addIssue({ code: "custom", message: erro });
+});
 
 export const loginSchema = z.object({
   email: z.email("Email inválido"),
@@ -69,7 +78,7 @@ export const conviteRegistrarSchema = z.object({
   email: z.email("Email inválido"),
   telefone: z.string().min(10, "Telefone inválido").optional(),
   profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
-  senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  senha: senhaForte,
 });
 
 export const profissionalCreateSchema = z.object({
@@ -78,7 +87,7 @@ export const profissionalCreateSchema = z.object({
   telefone: z.string().optional(),
   profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
   unidadeId: z.string().uuid("Selecione uma unidade"),
-  senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  senha: senhaForte,
 });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

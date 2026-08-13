@@ -13,7 +13,6 @@ import {
   LinkIcon,
   Copy,
   Check,
-  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -110,20 +109,13 @@ export function ProfissionaisClient({
     setCadError("");
     setCadLoading(true);
     try {
-      const created = await apiFetch<{ id: string; nome: string; email: string }>("/api/profissionais", {
+      const created = await apiFetch<Profissional>("/api/profissionais", {
         method: "POST",
         body: JSON.stringify(cadForm),
       });
-      setProfissionais((prev) => [
-        {
-          id: created.id,
-          nome: created.nome ?? cadForm.nome,
-          profissao: cadForm.profissao,
-          ativo: true,
-          vinculos: [],
-        },
-        ...prev,
-      ]);
+      // A API devolve a linha completa, com o vínculo — antes a pessoa nova
+      // aparecia sem unidade (e fora do filtro de unidade) até recarregar.
+      setProfissionais((prev) => [created, ...prev]);
       setShowCadastrar(false);
       setCadForm({ nome: "", email: "", telefone: "", profissao: "", unidadeId: "", senha: "" });
       toast.success(`${created.nome ?? cadForm.nome} cadastrado(a)`);
@@ -520,11 +512,15 @@ export function ProfissionaisClient({
                   id="cad-senha"
                   type="password"
                   required
-                  minLength={6}
+                  minLength={10}
                   value={cadForm.senha}
                   onChange={(e) => setCadForm((f) => ({ ...f, senha: e.target.value }))}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 10 caracteres"
                 />
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  Pelo menos 10 caracteres, combinando três de: minúscula,
+                  maiúscula, número e símbolo.
+                </p>
               </div>
               {cadError && <p className="text-sm text-[var(--status-danger-fg)]">{cadError}</p>}
               <div className="flex justify-end gap-2 pt-2">
@@ -689,7 +685,14 @@ export function ProfissionaisClient({
                                 size="icon"
                                 title="Copiar link"
                                 onClick={async () => {
-                                  await navigator.clipboard.writeText(url);
+                                  try {
+                                    await navigator.clipboard.writeText(url);
+                                    toast.success("Link copiado.");
+                                  } catch {
+                                    toast.message(
+                                      "O navegador bloqueou a cópia — selecione o link e copie manualmente.",
+                                    );
+                                  }
                                 }}
                               >
                                 <Copy className="h-4 w-4" />

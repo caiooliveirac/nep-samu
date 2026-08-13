@@ -125,15 +125,21 @@ export function ProfissionalDetail({
         body: JSON.stringify({
           nome: form.get("nome"),
           profissao: form.get("profissao") || undefined,
-          telefone: form.get("telefone") || undefined,
+          // Campo limpo viaja como "" de propósito: o servidor traduz para
+          // NULL — com `undefined` não haveria como apagar um telefone.
+          telefone: form.get("telefone") ?? "",
           unidadeId: form.get("unidadeId") || undefined,
         }),
       });
 
       toast.success("Profissional atualizado com sucesso");
       router.refresh();
-    } catch {
-      toast.error("Erro ao atualizar profissional");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao atualizar profissional",
+      );
     } finally {
       setSaving(false);
     }
@@ -211,6 +217,7 @@ export function ProfissionalDetail({
                 <select
                   id="profissao"
                   name="profissao"
+                  required
                   defaultValue={profissional.profissao || ""}
                   className={selectClass}
                 >

@@ -157,11 +157,15 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
           id="senha"
           type="password"
           required
-          minLength={6}
+          minLength={10}
           value={form.senha}
           onChange={(e) => setForm((f) => ({ ...f, senha: e.target.value }))}
-          placeholder="Mínimo 6 caracteres"
+          placeholder="Mínimo 10 caracteres"
         />
+        <p className="text-xs text-[var(--text-muted)]">
+          Pelo menos 10 caracteres, combinando três de: minúscula, maiúscula,
+          número e símbolo.
+        </p>
       </div>
 
       {error && (
