@@ -1,1 +1,45 @@
-IyBKb2IgZGUgdXNvIMO6bmljbywgZGlzcGFyYWRvIHPDsyB2aWEgd29ya2Zsb3dfZGlzcGF0Y2ggLSBudW5jYSBlbSBwdXNoLiBGYXoKIyBiYWNrdXAgZSBhcGxpY2EgZHJpenpsZS8wMDAzX3VuaWRhZGVfb2N1bHRhLnNxbCBlbSBwcm9kdcOnw6NvIGFudGVzIGRvIFBSICM0CiMgc2VyIG1lc2NsYWRvIChlc3NlIFBSIGrDoSBsw6ovZXNjcmV2ZSB1bmlkYWRlcy5vY3VsdGEsIGVudMOjbyBhIGNvbHVuYQojIHByZWNpc2EgZXhpc3RpciBhbnRlcyBkbyBkZXBsb3kpLiBSZW1vdmlkbyBkZXBvaXMgZGUgY29uZmlybWFkby4KbmFtZTogTWlncmHDp8OjbyBtYW51YWwgKHVzbyDDum5pY28pIOKAlCB1bmlkYWRlcy5vY3VsdGEKCm9uOgogIHdvcmtmbG93X2Rpc3BhdGNoOgoKY29uY3VycmVuY3k6CiAgZ3JvdXA6IGRlcGxveS1uZXAtc2FtdQogIGNhbmNlbC1pbi1wcm9ncmVzczogZmFsc2UKCmpvYnM6CiAgbWlncmF0ZToKICAgIG5hbWU6IEJhY2t1cCArIGFwbGljYXIgZHJpenpsZS8wMDAzX3VuaWRhZGVfb2N1bHRhLnNxbAogICAgcnVucy1vbjogW3NlbGYtaG9zdGVkLCBuZXBdCiAgICBzdGVwczoKICAgICAgLSBuYW1lOiBDaGVja291dCAocGVnYSBvIFNRTCBkZXN0YSBicmFuY2gpCiAgICAgICAgdXNlczogYWN0aW9ucy9jaGVja291dEB2NAoKICAgICAgLSBuYW1lOiBDb25mZXJpciBmZXJyYW1lbnRhcyBkaXNwb27DrXZlaXMKICAgICAgICBydW46IHwKICAgICAgICAgIHNldCAtZXVvIHBpcGVmYWlsCiAgICAgICAgICBjb21tYW5kIC12IHBnX2R1bXAgPi9kZXYvbnVsbCB8fCB7IGVjaG8gIjo6ZXJyb3I6OnBnX2R1bXAgbsOjbyBlbmNvbnRyYWRvIG5vIHJ1bm5lciI7IGV4aXQgMTsgfQogICAgICAgICAgY29tbWFuZCAtdiBwc3FsID4vZGV2L251bGwgfHwgeyBlY2hvICI6OmVycm9yOjpwc3FsIG7Do28gZW5jb250cmFkbyBubyBydW5uZXIiOyBleGl0IDE7IH0KICAgICAgICAgIHRlc3QgLWYgL2hvbWUvdWJ1bnR1L25lcC1zYW11Ly5lbnYgfHwgeyBlY2hvICI6OmVycm9yOjouZW52IG7Do28gZW5jb250cmFkbyBlbSAvaG9tZS91YnVudHUvbmVwLXNhbXUiOyBleGl0IDE7IH0KCiAgICAgIC0gbmFtZTogQmFja3VwLCBhcGxpY2FyIG1pZ3Jhw6fDo28gZSBjb25mZXJpcgogICAgICAgIHJ1bjogfAogICAgICAgICAgc2V0IC1ldW8gcGlwZWZhaWwKICAgICAgICAgIHNldCAtYQogICAgICAgICAgc291cmNlIC9ob21lL3VidW50dS9uZXAtc2FtdS8uZW52CiAgICAgICAgICBzZXQgK2EKCiAgICAgICAgICBCQUNLVVBfRklMRT1+L2JhY2t1cC1uZXAtc2FtdS1wcmUtMDAwMy0kKGRhdGUgKyVZJW0lZC0lSCVNJVMpLnNxbAogICAgICAgICAgZWNobyAiRmF6ZW5kbyBiYWNrdXAgZW0gJEJBQ0tVUF9GSUxFIgogICAgICAgICAgcGdfZHVtcCAiJERBVEFCQVNFX1VSTCIgPiAiJEJBQ0tVUF9GSUxFIgogICAgICAgICAgZWNobyAiQmFja3VwIG9rOiAkKGR1IC1oICIkQkFDS1VQX0ZJTEUiIHwgY3V0IC1mMSkiCgogICAgICAgICAgZWNobyAiQXBsaWNhbmRvIGRyaXp6bGUvMDAwM191bmlkYWRlX29jdWx0YS5zcWwiCiAgICAgICAgICBwc3FsICIkREFUQUJBU0VfVVJMIiAtdiBPTl9FUlJPUl9TVE9QPTEgLWYgZHJpenpsZS8wMDAzX3VuaWRhZGVfb2N1bHRhLnNxbAoKICAgICAgICAgIGVjaG8gIkNvbmZlcmluZG8gY29sdW5hOiIKICAgICAgICAgIHBzcWwgIiREQVRBQkFTRV9VUkwiIC1jICJTRUxFQ1QgY29sdW1uX25hbWUsIGRhdGFfdHlwZSwgY29sdW1uX2RlZmF1bHQgRlJPTSBpbmZvcm1hdGlvbl9zY2hlbWEuY29sdW1ucyBXSEVSRSB0YWJsZV9uYW1lPSd1bmlkYWRlcycgQU5EIGNvbHVtbl9uYW1lPSdvY3VsdGEnOyIK
+# Job de uso único, disparado só via workflow_dispatch — nunca em push. Faz
+# backup e aplica drizzle/0003_unidade_oculta.sql em produção antes do PR #4
+# ser mesclado (esse PR já lê/escreve unidades.oculta, então a coluna
+# precisa existir antes do deploy). Removido depois de confirmado.
+name: Migração manual (uso único) — unidades.oculta
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nep-samu
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup + aplicar drizzle/0003_unidade_oculta.sql
+    runs-on: [self-hosted, nep]
+    steps:
+      - name: Checkout (pega o SQL desta branch)
+        uses: actions/checkout@v4
+
+      - name: Conferir ferramentas disponíveis
+        run: |
+          set -euo pipefail
+          command -v pg_dump >/dev/null || { echo "::error::pg_dump não encontrado no runner"; exit 1; }
+          command -v psql >/dev/null || { echo "::error::psql não encontrado no runner"; exit 1; }
+          test -f /home/ubuntu/nep-samu/.env || { echo "::error::.env não encontrado em /home/ubuntu/nep-samu"; exit 1; }
+
+      - name: Backup, aplicar migração e conferir
+        run: |
+          set -euo pipefail
+          set -a
+          source /home/ubuntu/nep-samu/.env
+          set +a
+
+          BACKUP_FILE=~/backup-nep-samu-pre-0003-$(date +%Y%m%d-%H%M%S).sql
+          echo "Fazendo backup em $BACKUP_FILE"
+          pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+          echo "Backup ok: $(du -h "$BACKUP_FILE" | cut -f1)"
+
+          echo "Aplicando drizzle/0003_unidade_oculta.sql"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0003_unidade_oculta.sql
+
+          echo "Conferindo coluna:"
+          psql "$DATABASE_URL" -c "SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name='unidades' AND column_name='oculta';"
