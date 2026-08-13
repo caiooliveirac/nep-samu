@@ -169,6 +169,10 @@ export const unidades = pgTable(
       .references(() => municipios.id),
     endereco: text("endereco"),
     ativo: boolean("ativo").notNull().default(true),
+    // "Excluir" na tela de Unidades só esconde: a linha nunca é apagada
+    // (vínculo, turma, matrícula e convite continuam apontando pra ela).
+    // Diferente de `ativo` — oculta só controla o que aparece na lista.
+    oculta: boolean("oculta").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
