@@ -40,8 +40,12 @@ export default async function NotificacoesPage() {
             // sem o link, o aviso era um beco sem saída e ninguém achava onde
             // aprovar o vínculo.
             const payload = n.payload as { userId?: string } | null;
+            // O pedido de troca de unidade termina no mesmo lugar: é lá que o
+            // coordenador aprova o vínculo e devolve o acesso à pessoa.
             const cadastroHref =
-              n.tipo === "CONVITE_CADASTRO" && payload?.userId
+              (n.tipo === "CONVITE_CADASTRO" ||
+                n.tipo === "TROCA_UNIDADE_SOLICITADA") &&
+              payload?.userId
                 ? `/profissionais/${payload.userId}`
                 : null;
 

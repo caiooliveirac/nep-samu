@@ -26,6 +26,13 @@ import { formatDate } from "@/lib/format";
 import { ListaInscritos } from "@/components/turma/lista-inscritos";
 import { apiFetch } from "@/lib/api-client";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  erroNomeCompleto,
+  erroWhatsapp,
+  formatarTelefone,
+} from "@/lib/contato";
 
 interface Props {
   turma: {
@@ -62,11 +69,19 @@ interface Props {
   userRole: string;
   userId: string;
   myEnrollment: { id: string; status: EnrollmentStatus } | null;
+  meusDados: { nome: string; telefone: string | null };
 }
 
-export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: Props) {
+export function TurmaDetail({
+  turma,
+  metrics,
+  userRole,
+  myEnrollment,
+  meusDados,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [confirmandoInscricao, setConfirmandoInscricao] = useState(false);
   const isOrganizador = userRole === "ORGANIZADOR";
 
   const VALID_TRANSITIONS: Record<string, TurmaStatus[]> = {
@@ -145,15 +160,32 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
     }
   }
 
-  async function handleInscrever() {
+  /*
+   * A inscrição passa pelo modal: é a última hora em que dá para consertar o
+   * nome completo e o WhatsApp, e é por eles que a pessoa é achada na lista e
+   * avisada da vaga. O que a pessoa corrigir ali é salvo no cadastro antes de
+   * a inscrição existir.
+   */
+  async function handleInscrever(dados: { nome: string; telefone: string }) {
     setLoading(true);
     try {
+      if (
+        dados.nome !== meusDados.nome ||
+        dados.telefone !== (meusDados.telefone ?? "")
+      ) {
+        await apiFetch("/api/perfil", {
+          method: "PATCH",
+          body: JSON.stringify(dados),
+        });
+      }
+
       await apiFetch(`/api/turmas/${turma.id}/inscrever`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // O servidor resolve a unidade pelo vínculo ativo da pessoa.
         body: JSON.stringify({}),
       });
+      setConfirmandoInscricao(false);
       toast.success("Inscrição realizada com sucesso!");
       router.refresh();
     } catch (err) {
@@ -212,7 +244,10 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
             </Link>
           )}
           {canEnroll && (
-            <Button onClick={handleInscrever} disabled={loading}>
+            <Button
+              onClick={() => setConfirmandoInscricao(true)}
+              disabled={loading}
+            >
               {turma.status === "LOTADA" ? "Entrar na fila" : "Inscrever-se"}
             </Button>
           )}
@@ -412,6 +447,22 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
         </Card>
       )}
 
+      {confirmandoInscricao && (
+        <ModalConfirmarInscricao
+          turma={{
+            titulo: turma.titulo,
+            dataInicio: turma.dataInicio,
+            horaInicio: turma.horaInicio,
+            local: turma.local,
+            fila: turma.status === "LOTADA",
+          }}
+          dados={meusDados}
+          salvando={loading}
+          onCancelar={() => setConfirmandoInscricao(false)}
+          onConfirmar={handleInscrever}
+        />
+      )}
+
       {isOrganizador && (
         <ListaInscritos
           turmaId={turma.id}
@@ -423,6 +474,125 @@ export function TurmaDetail({ turma, metrics, userRole, userId, myEnrollment }: 
           }
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * O último portão antes da inscrição existir. Além de confirmar a turma, ele
+ * pergunta de novo as duas coisas que decidem se a vaga chega na pessoa: o
+ * nome completo (é como ela é achada na lista) e o WhatsApp (é por onde vem o
+ * aviso). Vêm preenchidos com o que está no cadastro, e dá para corrigir aqui.
+ */
+function ModalConfirmarInscricao({
+  turma,
+  dados,
+  salvando,
+  onCancelar,
+  onConfirmar,
+}: {
+  turma: {
+    titulo: string;
+    dataInicio: string;
+    horaInicio: string;
+    local: string | null;
+    fila: boolean;
+  };
+  dados: { nome: string; telefone: string | null };
+  salvando: boolean;
+  onCancelar: () => void;
+  onConfirmar: (dados: { nome: string; telefone: string }) => void;
+}) {
+  const [nome, setNome] = useState(dados.nome);
+  const [telefone, setTelefone] = useState(
+    formatarTelefone(dados.telefone ?? ""),
+  );
+
+  const erroNome = erroNomeCompleto(nome);
+  const erroTel = erroWhatsapp(telefone);
+  const faltavaWhatsapp = !dados.telefone;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+        <div>
+          <h2 className="font-display text-lg font-bold text-[var(--text-primary)]">
+            {turma.fila ? "Entrar na fila de espera" : "Confirmar inscrição"}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {turma.titulo} — {formatDate(turma.dataInicio)} às{" "}
+            {turma.horaInicio}
+            {turma.local ? `, ${turma.local}` : ""}.
+          </p>
+        </div>
+
+        <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+          <strong className="text-[var(--text-primary)]">
+            Confira seu nome completo e seu WhatsApp.
+          </strong>{" "}
+          É pelo nome completo que você é encontrado(a) na lista de inscritos e
+          no certificado, e é no WhatsApp que chegam o aviso de vaga, o pedido
+          de confirmação e qualquer mudança de data.
+          {faltavaWhatsapp && (
+            <>
+              {" "}
+              <span className="text-[var(--text-primary)]">
+                Seu cadastro ainda não tem WhatsApp — informe agora.
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="insc-nome">Nome completo *</Label>
+          <Input
+            id="insc-nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            placeholder="Nome e sobrenome, como no documento"
+          />
+          {erroNome && (
+            <p className="text-xs text-[var(--status-danger-fg)]">{erroNome}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="insc-whatsapp">WhatsApp (com DDD) *</Label>
+          <Input
+            id="insc-whatsapp"
+            value={telefone}
+            inputMode="tel"
+            maxLength={15}
+            onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
+            placeholder="(71) 99999-9999"
+          />
+          {erroTel && (
+            <p className="text-xs text-[var(--status-danger-fg)]">{erroTel}</p>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            className="flex-1"
+            disabled={salvando || !!erroNome || !!erroTel}
+            onClick={() =>
+              onConfirmar({
+                nome: nome.trim().replace(/\s+/g, " "),
+                telefone: telefone.trim(),
+              })
+            }
+          >
+            {salvando
+              ? "Enviando..."
+              : turma.fila
+                ? "Confirmar e entrar na fila"
+                : "Confirmar inscrição"}
+          </Button>
+          <Button variant="ghost" onClick={onCancelar} disabled={salvando}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -22,7 +22,6 @@ export default async function CursoDetailPage({
 
   const curso = await db.query.cursos.findFirst({
     where: and(eq(cursos.id, cursoId), eq(cursos.ativo, true)),
-    with: { categoria: true },
   });
 
   if (!curso) notFound();
@@ -50,12 +49,8 @@ export default async function CursoDetailPage({
     }
   }
 
-  const formatCargaHoraria = (min: number | null) => {
-    if (!min) return "—";
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return m > 0 ? `${h}h${m}min` : `${h}h`;
-  };
+  const formatCargaHoraria = (horas: number | null) =>
+    horas ? `${horas}h` : "—";
 
   return (
     <div className="space-y-6">
@@ -72,11 +67,6 @@ export default async function CursoDetailPage({
         <div className="flex items-start justify-between">
           <div>
             <h1 className="font-display text-2xl font-bold">{curso.nome}</h1>
-            {curso.categoria && (
-              <span className="mt-1 inline-block rounded bg-[var(--bg-surface)] px-2 py-0.5 text-xs text-[var(--text-secondary)]">
-                {curso.categoria.nome}
-              </span>
-            )}
           </div>
           {session.user.role === "ORGANIZADOR" && (
             <Link href={`/cursos/${cursoId}/editar`}>

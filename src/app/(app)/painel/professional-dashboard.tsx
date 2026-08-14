@@ -3,6 +3,7 @@
 import { CalendarDays, Clock, CheckCircle } from "lucide-react";
 import { MetricsCard } from "@/components/dashboard/metrics-card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { TrocarUnidadeCard } from "@/components/perfil/trocar-unidade-card";
 
 export function ProfessionalDashboard() {
   return (
@@ -33,6 +34,8 @@ export function ProfessionalDashboard() {
         title="Nenhuma inscrição ativa"
         description="Explore as turmas disponíveis para se inscrever em cursos do NEP."
       />
+
+      <TrocarUnidadeCard />
     </div>
   );
 }

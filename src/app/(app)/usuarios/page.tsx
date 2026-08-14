@@ -3,7 +3,10 @@ import { auth } from "@/server/auth/config";
 import { hasPermission } from "@/server/auth/rbac";
 import type { Role } from "@/lib/enums";
 import { db } from "@/server/db";
-import { listarUsuariosParaTela } from "@/server/services/usuario-admin.service";
+import {
+  listarUsuariosParaTela,
+  listarUsuariosRemovidos,
+} from "@/server/services/usuario-admin.service";
 import { UsuariosClient } from "./usuarios-client";
 
 export default async function UsuariosPage() {
@@ -13,8 +16,9 @@ export default async function UsuariosPage() {
     redirect("/painel");
   }
 
-  const [usuarios, unidades] = await Promise.all([
+  const [usuarios, removidos, unidades] = await Promise.all([
     listarUsuariosParaTela(),
+    listarUsuariosRemovidos(),
     db.query.unidades.findMany({
       with: { municipio: true },
       orderBy: (u, { asc }) => [asc(u.nome)],
@@ -24,6 +28,7 @@ export default async function UsuariosPage() {
   return (
     <UsuariosClient
       usuarios={usuarios}
+      removidos={removidos}
       unidades={unidades
         .filter((u) => u.ativo)
         .map((u) => ({

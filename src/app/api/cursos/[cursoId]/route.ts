@@ -56,8 +56,8 @@ export async function PUT(
       .set({
         nome: parsed.nome,
         descricao: parsed.descricao,
-        categoriaId: parsed.categoriaId,
         cargaHoraria: parsed.cargaHoraria,
+        publicoAlvoProfissoes: parsed.publicoAlvoProfissoes,
         publicoAlvoDescritivo: parsed.publicoAlvoDescritivo,
         updatedAt: new Date(),
       })

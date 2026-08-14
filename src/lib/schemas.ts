@@ -1,5 +1,21 @@
 import { z } from "zod/v4";
 import { getPasswordPolicyError } from "@/server/lib/password-policy";
+import { erroNomeCompleto, erroWhatsapp } from "@/lib/contato";
+import { PROFISSOES } from "@/lib/enums";
+
+/**
+ * Nome completo e WhatsApp são exigidos em todo caminho de cadastro de pessoa:
+ * é o que permite achar quem é na lista e avisar da vaga.
+ */
+const nomeCompleto = z.string().trim().superRefine((nome, ctx) => {
+  const erro = erroNomeCompleto(nome);
+  if (erro) ctx.addIssue({ code: "custom", message: erro });
+});
+
+const whatsapp = z.string().trim().superRefine((tel, ctx) => {
+  const erro = erroWhatsapp(tel);
+  if (erro) ctx.addIssue({ code: "custom", message: erro });
+});
 
 // O login continua aceitando senhas curtas herdadas; a régua nova vale para
 // senhas NOVAS (cadastro e troca). Sem isto o cadastro aceitava "123456" e a
@@ -17,8 +33,11 @@ export const loginSchema = z.object({
 export const cursoSchema = z.object({
   nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   descricao: z.string().optional(),
-  categoriaId: z.string().uuid().optional(),
+  // Em horas.
   cargaHoraria: z.number().int().positive().optional(),
+  // As profissões que o curso atende. Ficam gravadas no curso e são o que a
+  // turma nova herda — antes viravam só texto e se perdiam.
+  publicoAlvoProfissoes: z.array(z.enum(PROFISSOES)).default([]),
   publicoAlvoDescritivo: z.string().optional(),
 });
 
@@ -55,10 +74,10 @@ export const turmaSchema = z.object({
   );
 
 export const profissionalSchema = z.object({
-  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  nome: nomeCompleto,
   email: z.email("Email inválido"),
   cpf: z.string().regex(/^\d{11}$/, "CPF deve ter 11 dígitos"),
-  telefone: z.string().optional(),
+  telefone: whatsapp,
   profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
 });
 
@@ -74,20 +93,26 @@ export const conviteCreateSchema = z.object({
 });
 
 export const conviteRegistrarSchema = z.object({
-  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  nome: nomeCompleto,
   email: z.email("Email inválido"),
-  telefone: z.string().min(10, "Telefone inválido").optional(),
+  telefone: whatsapp,
   profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
   senha: senhaForte,
 });
 
 export const profissionalCreateSchema = z.object({
-  nome: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
+  nome: nomeCompleto,
   email: z.email("Email inválido"),
-  telefone: z.string().optional(),
+  telefone: whatsapp,
   profissao: z.enum(["MEDICO", "ENFERMEIRO", "TEC_ENFERMAGEM", "CONDUTOR", "TARM", "RADIO_OPERADOR", "ADMINISTRATIVO", "FISIOTERAPEUTA", "ASSISTENTE_SOCIAL", "OUTRO"]),
   unidadeId: z.string().uuid("Selecione uma unidade"),
   senha: senhaForte,
+});
+
+/** O que a própria pessoa pode corrigir nos dados dela. */
+export const meusDadosSchema = z.object({
+  nome: nomeCompleto,
+  telefone: whatsapp,
 });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -103,3 +128,4 @@ export type UnidadeInput = z.infer<typeof unidadeSchema>;
 export type ConviteCreateInput = z.infer<typeof conviteCreateSchema>;
 export type ConviteRegistrarInput = z.infer<typeof conviteRegistrarSchema>;
 export type ProfissionalCreateInput = z.infer<typeof profissionalCreateSchema>;
+export type MeusDadosInput = z.infer<typeof meusDadosSchema>;

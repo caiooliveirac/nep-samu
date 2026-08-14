@@ -95,6 +95,9 @@ export const notificacaoTipoEnum = pgEnum("notificacao_tipo", [
   "CANCELADO_NAO_CONFIRMOU",
   "TURMA_CANCELADA",
   "VAGA_LIBERADA_REDISTRIBUICAO",
+  // O profissional pediu para trocar de unidade: quem decide é o coordenador
+  // da unidade de destino.
+  "TROCA_UNIDADE_SOLICITADA",
 ]);
 
 export const notificacaoCanalEnum = pgEnum("notificacao_canal", [
@@ -216,7 +219,15 @@ export const cursos = pgTable(
     nome: text("nome").notNull(),
     descricao: text("descricao"),
     categoriaId: uuid("categoria_id").references(() => categorias.id),
+    // Em HORAS. Era em minutos e ninguém digitava "480" pensando em 8 horas —
+    // a migração 0004 converteu os valores herdados.
     cargaHoraria: integer("carga_horaria"),
+    // As profissões que o curso atende, guardadas como dado e não só como
+    // frase. É o que a turma nova herda como profissões elegíveis.
+    publicoAlvoProfissoes: jsonb("publico_alvo_profissoes")
+      .notNull()
+      .$type<string[]>()
+      .default([]),
     publicoAlvoDescritivo: text("publico_alvo_descritivo"),
     ativo: boolean("ativo").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -466,6 +477,38 @@ export const notificacoes = pgTable(
     index("idx_notificacoes_destinatario").on(table.destinatarioId),
     index("idx_notificacoes_status").on(table.status),
     index("idx_notificacoes_tipo").on(table.tipo),
+  ],
+);
+
+/**
+ * Quem foi apagado de verdade. Apagar usuário é destrutivo — a linha some de
+ * `users` e a tela de Usuários volta a mostrar só gente que existe. O que fica
+ * é esta ficha: serve para reconhecer a pessoa se ela se cadastrar de novo com
+ * os mesmos dados, e para o organizador saber o que foi removido junto.
+ */
+export const usuariosRemovidos = pgTable(
+  "usuarios_removidos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull(),
+    nome: text("nome").notNull(),
+    email: text("email").notNull(),
+    cpf: varchar("cpf", { length: 11 }),
+    telefone: varchar("telefone", { length: 15 }),
+    role: text("role").notNull(),
+    profissao: text("profissao"),
+    // Vínculos e matrículas da época, para o histórico não virar só um nome.
+    snapshot: jsonb("snapshot"),
+    removidoPor: uuid("removido_por").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    removidoEm: timestamp("removido_em", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_usuarios_removidos_email").on(table.email),
+    index("idx_usuarios_removidos_cpf").on(table.cpf),
   ],
 );
 

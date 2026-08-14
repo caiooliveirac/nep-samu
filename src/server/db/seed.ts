@@ -12,6 +12,7 @@ import {
   notificacoes,
 } from "./schema";
 import bcrypt from "bcryptjs";
+import { PROFISSOES } from "@/lib/enums";
 
 async function seed() {
   console.log("🌱 Iniciando seed...");
@@ -172,12 +173,14 @@ async function seed() {
   console.log(`✅ ${profVinculos.length} vínculos criados`);
 
   // ══════ Cursos ══════
+  // cargaHoraria em HORAS.
+  const MED_ENF = ["MEDICO", "ENFERMEIRO"];
   const cursoData = [
-    { nome: "Via Aérea Avançada", descricao: "Treinamento avançado em manejo de via aérea no APH", categoriaId: insertedCategorias[0].id, cargaHoraria: 480, publicoAlvoDescritivo: "Médicos e enfermeiros" },
-    { nome: "SBV - Suporte Básico de Vida", descricao: "Protocolos de suporte básico de vida", categoriaId: insertedCategorias[1].id, cargaHoraria: 240, publicoAlvoDescritivo: "Todos os profissionais" },
-    { nome: "XABCDE no Trauma", descricao: "Abordagem sistematizada do paciente traumatizado", categoriaId: insertedCategorias[2].id, cargaHoraria: 480, publicoAlvoDescritivo: "Médicos e enfermeiros" },
-    { nome: "Emergências Clínicas", descricao: "Manejo de emergências clínicas no APH", categoriaId: insertedCategorias[3].id, cargaHoraria: 360, publicoAlvoDescritivo: "Médicos e enfermeiros" },
-    { nome: "Humanização e Segurança do Paciente", descricao: "Práticas de humanização e segurança", categoriaId: insertedCategorias[4].id, cargaHoraria: 120, publicoAlvoDescritivo: "Todos os profissionais" },
+    { nome: "Via Aérea Avançada", descricao: "Treinamento avançado em manejo de via aérea no APH", categoriaId: insertedCategorias[0].id, cargaHoraria: 8, publicoAlvoProfissoes: MED_ENF, publicoAlvoDescritivo: "Médicos e enfermeiros" },
+    { nome: "SBV - Suporte Básico de Vida", descricao: "Protocolos de suporte básico de vida", categoriaId: insertedCategorias[1].id, cargaHoraria: 4, publicoAlvoProfissoes: [...PROFISSOES], publicoAlvoDescritivo: "Todos os profissionais" },
+    { nome: "XABCDE no Trauma", descricao: "Abordagem sistematizada do paciente traumatizado", categoriaId: insertedCategorias[2].id, cargaHoraria: 8, publicoAlvoProfissoes: MED_ENF, publicoAlvoDescritivo: "Médicos e enfermeiros" },
+    { nome: "Emergências Clínicas", descricao: "Manejo de emergências clínicas no APH", categoriaId: insertedCategorias[3].id, cargaHoraria: 6, publicoAlvoProfissoes: MED_ENF, publicoAlvoDescritivo: "Médicos e enfermeiros" },
+    { nome: "Humanização e Segurança do Paciente", descricao: "Práticas de humanização e segurança", categoriaId: insertedCategorias[4].id, cargaHoraria: 2, publicoAlvoProfissoes: [...PROFISSOES], publicoAlvoDescritivo: "Todos os profissionais" },
   ];
 
   const insertedCursos = await db

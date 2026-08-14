@@ -15,7 +15,6 @@ export default async function CursosPage() {
 
   const allCursos = await db.query.cursos.findMany({
     where: eq(cursos.ativo, true),
-    with: { categoria: true },
     orderBy: (cursos, { asc }) => [asc(cursos.nome)],
   });
 

@@ -6,6 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PROFISSOES, PROFISSAO_LABELS } from "@/lib/enums";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import {
+  erroNomeCompleto,
+  erroWhatsapp,
+  formatarTelefone,
+} from "@/lib/contato";
 
 interface Props {
   token: string;
@@ -28,9 +33,21 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
   const selectClass =
     "flex h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]";
 
+  // Nome completo e WhatsApp não são detalhe de formulário: sem os dois, a
+  // pessoa não é achada na lista de presença nem avisada quando a vaga sai.
+  const erroNome = erroNomeCompleto(form.nome);
+  const erroTel = erroWhatsapp(form.telefone);
+  const podeEnviar = !erroNome && !erroTel;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (erroNome || erroTel) {
+      setError(erroNome ?? erroTel ?? "");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -103,6 +120,15 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
 
       <hr className="border-[var(--border-muted)]" />
 
+      <div className="rounded-md border border-[var(--border-default)] bg-[var(--bg-tertiary)] p-3 text-sm text-[var(--text-secondary)]">
+        <strong className="text-[var(--text-primary)]">
+          Nome completo e WhatsApp são obrigatórios.
+        </strong>{" "}
+        É pelo nome completo que você é encontrado(a) na lista de inscritos, e
+        é no WhatsApp que chega o aviso de vaga, de confirmação e de troca de
+        data. Número errado = você perde a vaga.
+      </div>
+
       {/* Editable fields */}
       <div className="space-y-2">
         <Label htmlFor="nome">Nome completo *</Label>
@@ -111,8 +137,11 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
           required
           value={form.nome}
           onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-          placeholder="Seu nome completo"
+          placeholder="Nome e sobrenome, como no documento"
         />
+        {form.nome.length > 0 && erroNome && (
+          <p className="text-xs text-[var(--status-danger-fg)]">{erroNome}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -128,13 +157,21 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="telefone">Telefone</Label>
+        <Label htmlFor="telefone">WhatsApp (com DDD) *</Label>
         <Input
           id="telefone"
+          required
+          inputMode="tel"
+          maxLength={15}
           value={form.telefone}
-          onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))}
+          onChange={(e) =>
+            setForm((f) => ({ ...f, telefone: formatarTelefone(e.target.value) }))
+          }
           placeholder="(71) 99999-9999"
         />
+        {form.telefone.length > 0 && erroTel && (
+          <p className="text-xs text-[var(--status-danger-fg)]">{erroTel}</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -176,7 +213,7 @@ export function ConviteForm({ token, unidade, municipio }: Props) {
         <p className="text-sm font-medium text-[var(--status-danger-fg)]">{error}</p>
       )}
 
-      <Button type="submit" className="w-full" disabled={loading}>
+      <Button type="submit" className="w-full" disabled={loading || !podeEnviar}>
         {loading ? "Cadastrando..." : "Realizar Cadastro"}
       </Button>
     </form>

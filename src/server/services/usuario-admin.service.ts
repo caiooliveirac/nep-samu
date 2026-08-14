@@ -1,9 +1,20 @@
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/server/db";
 import type { Profissao, Role, VinculoStatus } from "@/lib/enums";
-import { unidades, users, vinculos } from "@/server/db/schema";
+import {
+  auditLog,
+  convites,
+  enrollments,
+  notificacoes,
+  passwordResetTokens,
+  turmas,
+  unidades,
+  users,
+  usuariosRemovidos,
+  vinculos,
+} from "@/server/db/schema";
 import { logAudit } from "@/server/services/audit.service";
 import {
   ConflictError,
@@ -405,6 +416,133 @@ export async function editarUsuario(
   });
 
   return atualizado;
+}
+
+/**
+ * Apaga a conta de verdade: a linha some de `users` e a tela de Usuários volta
+ * a mostrar só gente que existe, em vez de uma lista cheia de inativos.
+ *
+ * O que a pessoa deixou para trás não some junto — só troca de dono:
+ *  - matrículas, notificações, vínculos e tokens dela vão embora (são dela);
+ *  - turmas e convites que ela criou passam para quem apagou, senão apagar um
+ *    organizador levaria as turmas do sistema junto;
+ *  - a auditoria fica, com o autor em branco;
+ *  - uma ficha vai para `usuarios_removidos`, que é como reconhecer a pessoa
+ *    se ela se cadastrar de novo com os mesmos dados.
+ *
+ * Não há trava de "último organizador" nem de conta com histórico: apagar é
+ * destrutivo por decisão de quem apaga. A única recusa é apagar a própria
+ * conta — é a sessão de quem está clicando.
+ */
+export async function removerUsuario(
+  adminId: string,
+  userId: string,
+  ctx: { ip?: string; userAgent?: string } = {},
+) {
+  if (adminId === userId) {
+    throw new ValidationError(
+      "Você não pode apagar a própria conta — peça a outro organizador.",
+    );
+  }
+
+  const alvo = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { passwordHash: false },
+    with: {
+      vinculos: { with: { unidade: { columns: { id: true, nome: true } } } },
+      enrollments: { with: { turma: { columns: { id: true, titulo: true } } } },
+    },
+  });
+  if (!alvo) throw new NotFoundError("Usuário");
+
+  const ficha = {
+    userId: alvo.id,
+    nome: alvo.nome,
+    email: alvo.email,
+    cpf: alvo.cpf,
+    telefone: alvo.telefone,
+    role: alvo.role,
+    profissao: alvo.profissao,
+    snapshot: {
+      criadoEm: alvo.createdAt,
+      vinculos: alvo.vinculos.map((v) => ({
+        unidade: v.unidade?.nome ?? null,
+        status: v.status,
+        isCoordenador: v.isCoordenador,
+      })),
+      matriculas: alvo.enrollments.map((e) => ({
+        turma: e.turma?.titulo ?? null,
+        status: e.status,
+        inscritoEm: e.inscritoEm,
+      })),
+    },
+    removidoPor: adminId,
+  };
+
+  await db.transaction(async (tx) => {
+    await tx.insert(usuariosRemovidos).values(ficha);
+
+    // O que é da pessoa some com ela.
+    await tx.delete(notificacoes).where(eq(notificacoes.destinatarioId, userId));
+    await tx
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userId));
+    await tx.delete(enrollments).where(eq(enrollments.userId, userId));
+    await tx.delete(vinculos).where(eq(vinculos.userId, userId));
+
+    // O que é do sistema troca de dono em vez de ser destruído junto.
+    await tx
+      .update(turmas)
+      .set({ criadoPor: adminId, updatedAt: new Date() })
+      .where(eq(turmas.criadoPor, userId));
+    await tx
+      .update(convites)
+      .set({ criadoPor: adminId })
+      .where(eq(convites.criadoPor, userId));
+    await tx
+      .update(convites)
+      .set({ usadoPor: null })
+      .where(eq(convites.usadoPor, userId));
+    await tx
+      .update(auditLog)
+      .set({ userId: null })
+      .where(eq(auditLog.userId, userId));
+    await tx
+      .update(usuariosRemovidos)
+      .set({ removidoPor: null })
+      .where(eq(usuariosRemovidos.removidoPor, userId));
+
+    await tx.delete(users).where(eq(users.id, userId));
+  });
+
+  await logAudit({
+    userId: adminId,
+    action: "usuario.removido",
+    entityType: "user",
+    entityId: userId,
+    oldValue: { nome: alvo.nome, email: alvo.email, role: alvo.role },
+    ipAddress: ctx.ip,
+    userAgent: ctx.userAgent,
+  });
+
+  return { id: userId, nome: alvo.nome, email: alvo.email };
+}
+
+/** O histórico de quem foi apagado — o único rastro que sobra na tela. */
+export async function listarUsuariosRemovidos() {
+  const lista = await db.query.usuariosRemovidos.findMany({
+    orderBy: [desc(usuariosRemovidos.removidoEm)],
+    limit: 100,
+  });
+
+  return lista.map((r) => ({
+    id: r.id,
+    nome: r.nome,
+    email: r.email,
+    telefone: r.telefone,
+    role: r.role,
+    removidoEm: r.removidoEm.toISOString(),
+  }));
 }
 
 /**

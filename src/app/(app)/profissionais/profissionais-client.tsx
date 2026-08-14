@@ -22,6 +22,11 @@ import { Badge } from "@/components/ui/badge";
 import { PROFISSOES, PROFISSAO_LABELS, type Profissao } from "@/lib/enums";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
+import {
+  erroNomeCompleto,
+  erroWhatsapp,
+  formatarTelefone,
+} from "@/lib/contato";
 
 interface Vinculo {
   id: string;
@@ -449,13 +454,19 @@ export function ProfissionaisClient({
             </div>
             <form onSubmit={handleCadastrar} className="space-y-3">
               <div>
-                <Label htmlFor="cad-nome">Nome *</Label>
+                <Label htmlFor="cad-nome">Nome completo *</Label>
                 <Input
                   id="cad-nome"
                   required
+                  placeholder="Nome e sobrenome, como no documento"
                   value={cadForm.nome}
                   onChange={(e) => setCadForm((f) => ({ ...f, nome: e.target.value }))}
                 />
+                {cadForm.nome.length > 0 && erroNomeCompleto(cadForm.nome) && (
+                  <p className="mt-1 text-xs text-[var(--status-danger-fg)]">
+                    {erroNomeCompleto(cadForm.nome)}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="cad-email">Email *</Label>
@@ -468,12 +479,28 @@ export function ProfissionaisClient({
                 />
               </div>
               <div>
-                <Label htmlFor="cad-tel">Telefone</Label>
+                {/* WhatsApp é por onde o aviso de vaga chega: sem ele o
+                    cadastro não serve para inscrever ninguém. */}
+                <Label htmlFor="cad-tel">WhatsApp (com DDD) *</Label>
                 <Input
                   id="cad-tel"
+                  required
+                  inputMode="tel"
+                  maxLength={15}
+                  placeholder="(71) 99999-9999"
                   value={cadForm.telefone}
-                  onChange={(e) => setCadForm((f) => ({ ...f, telefone: e.target.value }))}
+                  onChange={(e) =>
+                    setCadForm((f) => ({
+                      ...f,
+                      telefone: formatarTelefone(e.target.value),
+                    }))
+                  }
                 />
+                {cadForm.telefone.length > 0 && erroWhatsapp(cadForm.telefone) && (
+                  <p className="mt-1 text-xs text-[var(--status-danger-fg)]">
+                    {erroWhatsapp(cadForm.telefone)}
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="cad-prof">Profissão *</Label>

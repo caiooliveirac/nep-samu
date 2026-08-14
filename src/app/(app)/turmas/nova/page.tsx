@@ -12,6 +12,7 @@ export default async function NovaTurmaPage() {
 
   const allCursos = await db.query.cursos.findMany({
     where: eq(cursos.ativo, true),
+    columns: { id: true, nome: true, publicoAlvoProfissoes: true },
     orderBy: (c, { asc }) => [asc(c.nome)],
   });
 

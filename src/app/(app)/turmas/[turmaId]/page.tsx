@@ -84,6 +84,12 @@ export default async function TurmaDetailPage({
       ),
     );
 
+  // O modal de inscrição confere nome completo e WhatsApp antes de inscrever.
+  const eu = await db.query.users.findFirst({
+    where: eq(users.id, session.user.id),
+    columns: { nome: true, telefone: true },
+  });
+
   // Verificar se o profissional já está inscrito
   const myEnrollment = session.user.role === "PROFISSIONAL"
     ? await db.query.enrollments.findFirst({
@@ -111,6 +117,10 @@ export default async function TurmaDetailPage({
       userRole={session.user.role as string}
       userId={session.user.id}
       myEnrollment={myEnrollment ?? null}
+      meusDados={{
+        nome: eu?.nome ?? session.user.name ?? "",
+        telefone: eu?.telefone ?? null,
+      }}
     />
   );
 }

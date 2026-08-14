@@ -13,16 +13,13 @@ interface Curso {
   descricao: string | null;
   cargaHoraria: number | null;
   publicoAlvoDescritivo: string | null;
-  categoria: { nome: string } | null;
 }
 
 export function CursosClient({ cursos }: { cursos: Curso[] }) {
   const [search, setSearch] = useState("");
 
-  const filtered = cursos.filter(
-    (c) =>
-      c.nome.toLowerCase().includes(search.toLowerCase()) ||
-      c.categoria?.nome.toLowerCase().includes(search.toLowerCase()),
+  const filtered = cursos.filter((c) =>
+    c.nome.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -80,9 +77,8 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
             <thead>
               <tr className="border-b border-[var(--border-muted)] text-left text-xs text-[var(--text-muted)]">
                 <th className="px-5 py-3 font-medium">Nome</th>
-                <th className="px-5 py-3 font-medium">Categoria</th>
-                <th className="px-5 py-3 font-medium">Público-alvo</th>
-                <th className="px-5 py-3 font-medium">Carga Horária</th>
+                <th className="px-5 py-3 font-medium">Categorias profissionais</th>
+                <th className="px-5 py-3 font-medium">Carga horária</th>
                 <th className="px-5 py-3 font-medium">Ações</th>
               </tr>
             </thead>
@@ -102,18 +98,13 @@ export function CursosClient({ cursos }: { cursos: Curso[] }) {
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
-                    {curso.categoria?.nome || "—"}
-                  </td>
-                  <td className="px-5 py-3 text-[var(--text-secondary)]">
                     {curso.publicoAlvoDescritivo || "—"}
                   </td>
                   <td
                     className="px-5 py-3 text-[var(--text-secondary)]"
                     style={{ fontFamily: "var(--font-mono)" }}
                   >
-                    {curso.cargaHoraria
-                      ? `${Math.floor(curso.cargaHoraria / 60)}h${curso.cargaHoraria % 60 > 0 ? `${curso.cargaHoraria % 60}min` : ""}`
-                      : "—"}
+                    {curso.cargaHoraria ? `${curso.cargaHoraria}h` : "—"}
                   </td>
                   {/* O lápis e o calendário eram ícones mudos, sem nem title:
                       ninguém adivinhava que um deles abria uma turma nova

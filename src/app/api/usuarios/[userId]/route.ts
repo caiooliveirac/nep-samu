@@ -7,7 +7,11 @@ import { hasPermission } from "@/server/auth/rbac";
 import { getRequestIp } from "@/server/lib/rate-limit";
 import { PROFISSOES, type Role } from "@/lib/enums";
 import { isValidUUID } from "@/lib/schemas";
-import { editarUsuario, trocarEmail } from "@/server/services/usuario-admin.service";
+import {
+  editarUsuario,
+  removerUsuario,
+  trocarEmail,
+} from "@/server/services/usuario-admin.service";
 
 const schema = z
   .object({
@@ -80,6 +84,34 @@ export async function PATCH(
     }
 
     return apiSuccess(atualizado);
+  } catch (error) {
+    return apiError(error);
+  }
+}
+
+/** Apagar é apagar: a conta some da lista e só a ficha de histórico fica. */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  try {
+    const session = await auth();
+    if (!session?.user) return apiError(new ForbiddenError());
+    if (!hasPermission(session.user.role as Role, "usuario:manage")) {
+      return apiError(new ForbiddenError());
+    }
+
+    const { userId } = await params;
+    if (!isValidUUID(userId)) {
+      throw new ValidationError("Identificador de usuário inválido");
+    }
+
+    const removido = await removerUsuario(session.user.id, userId, {
+      ip: getRequestIp(req.headers),
+      userAgent: req.headers.get("user-agent") ?? undefined,
+    });
+
+    return apiSuccess(removido);
   } catch (error) {
     return apiError(error);
   }
