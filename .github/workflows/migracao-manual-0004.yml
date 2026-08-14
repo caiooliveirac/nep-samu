@@ -1,0 +1,57 @@
+# Job de uso único, disparado só via workflow_dispatch — nunca em push. Faz
+# backup e aplica drizzle/0004_cursos_e_exclusao_de_usuario.sql em produção
+# ANTES deste PR ser mesclado: o código novo lê/escreve
+# cursos.publico_alvo_profissoes, a tabela usuarios_removidos e o valor de enum
+# TROCA_UNIDADE_SOLICITADA. Removido depois de confirmado.
+name: Migração manual (uso único) — cursos e exclusão de usuário
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-nep-samu
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Backup + aplicar drizzle/0004_cursos_e_exclusao_de_usuario.sql
+    runs-on: [self-hosted, nep]
+    steps:
+      - name: Checkout (pega o SQL desta branch)
+        uses: actions/checkout@v4
+        with:
+          ref: claude/courses-user-registration-151e8b
+
+      - name: Conferir ferramentas disponíveis
+        run: |
+          set -euo pipefail
+          command -v pg_dump >/dev/null || { echo "::error::pg_dump não encontrado no runner"; exit 1; }
+          command -v psql >/dev/null || { echo "::error::psql não encontrado no runner"; exit 1; }
+          test -f /home/ubuntu/nep-samu/.env || { echo "::error::.env não encontrado em /home/ubuntu/nep-samu"; exit 1; }
+
+      - name: Backup, aplicar migração e conferir
+        run: |
+          set -euo pipefail
+          set -a
+          source /home/ubuntu/nep-samu/.env
+          set +a
+
+          BACKUP_FILE=~/backup-nep-samu-pre-0004-$(date +%Y%m%d-%H%M%S).sql
+          echo "Fazendo backup em $BACKUP_FILE"
+          pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+          echo "Backup ok: $(du -h "$BACKUP_FILE" | cut -f1)"
+
+          echo "Aplicando drizzle/0004_cursos_e_exclusao_de_usuario.sql"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f drizzle/0004_cursos_e_exclusao_de_usuario.sql
+
+          echo "Conferindo coluna nova em cursos:"
+          psql "$DATABASE_URL" -c "SELECT column_name, data_type, column_default FROM information_schema.columns WHERE table_name='cursos' AND column_name='publico_alvo_profissoes';"
+
+          echo "Conferindo tabela de histórico:"
+          psql "$DATABASE_URL" -c "SELECT to_regclass('public.usuarios_removidos') AS tabela;"
+
+          echo "Conferindo valor de enum:"
+          psql "$DATABASE_URL" -c "SELECT unnest(enum_range(NULL::notificacao_tipo)) AS tipo;"
+
+          echo "Carga horária depois da conversão (deve estar em horas):"
+          psql "$DATABASE_URL" -c "SELECT nome, carga_horaria FROM cursos ORDER BY nome;"

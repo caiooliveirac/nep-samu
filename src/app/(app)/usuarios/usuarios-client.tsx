@@ -6,10 +6,12 @@ import {
   Building2,
   Check,
   Copy,
+  History,
   KeyRound,
   Pencil,
   Plus,
   Search,
+  Trash2,
   UserCog,
   UserRoundCheck,
   UserRoundX,
@@ -21,6 +23,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
+import {
+  erroNomeCompleto,
+  erroWhatsapp,
+  formatarTelefone,
+} from "@/lib/contato";
 import {
   PROFISSOES,
   PROFISSAO_LABELS,
@@ -57,6 +64,15 @@ interface Unidade {
   municipio: string | null;
 }
 
+interface Removido {
+  id: string;
+  nome: string;
+  email: string;
+  telefone: string | null;
+  role: string;
+  removidoEm: string;
+}
+
 const ROTULO_ROLE: Record<string, string> = {
   ORGANIZADOR: "Organizador",
   COORDENADOR: "Coordenador",
@@ -80,14 +96,19 @@ function vinculoPrincipal(u: Usuario) {
 
 export function UsuariosClient({
   usuarios: iniciais,
+  removidos,
   unidades,
   meuId,
 }: {
   usuarios: Usuario[];
+  removidos: Removido[];
   unidades: Unidade[];
   meuId: string;
 }) {
   const [usuarios, setUsuarios] = useState(iniciais);
+  const [historico, setHistorico] = useState(removidos);
+  const [verHistorico, setVerHistorico] = useState(false);
+  const [removerDe, setRemoverDe] = useState<Usuario | null>(null);
   const [busca, setBusca] = useState("");
   const [editando, setEditando] = useState<string | null>(null);
   const [rascunho, setRascunho] = useState("");
@@ -192,6 +213,33 @@ export function UsuariosClient({
         error instanceof Error
           ? error.message
           : "Não foi possível alterar a conta.",
+      );
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  async function apagar(u: Usuario) {
+    setSalvando(true);
+    try {
+      await apiFetch(`/api/usuarios/${u.id}`, { method: "DELETE" });
+      setUsuarios((atual) => atual.filter((x) => x.id !== u.id));
+      setHistorico((atual) => [
+        {
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          telefone: u.telefone,
+          role: u.role,
+          removidoEm: new Date().toISOString(),
+        },
+        ...atual,
+      ]);
+      setRemoverDe(null);
+      toast.success(`${u.nome} foi apagado.`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível apagar.",
       );
     } finally {
       setSalvando(false);
@@ -529,6 +577,20 @@ export function UsuariosClient({
                           <UserRoundCheck className="h-4 w-4" />
                         )}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setRemoverDe(u)}
+                        disabled={u.id === meuId || salvando}
+                        title={
+                          u.id === meuId
+                            ? "Você não pode apagar a própria conta"
+                            : "Apagar conta de vez"
+                        }
+                        className="text-[var(--status-danger-fg)]"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -548,6 +610,60 @@ export function UsuariosClient({
           </tbody>
         </table>
       </div>
+
+      {/* Histórico: o único rastro de quem foi apagado. Fica fechado — a lista
+          de cima é para quem existe. */}
+      <div className="rounded-md border border-[var(--border-default)]">
+        <button
+          type="button"
+          onClick={() => setVerHistorico((v) => !v)}
+          className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
+        >
+          <History className="h-4 w-4" />
+          Histórico de contas apagadas
+          <span className="text-[var(--text-muted)]">({historico.length})</span>
+        </button>
+
+        {verHistorico && (
+          <div className="border-t border-[var(--border-default)] px-4 py-3">
+            {historico.length === 0 ? (
+              <p className="text-sm text-[var(--text-muted)]">
+                Nenhuma conta foi apagada.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {historico.map((r) => (
+                  <li
+                    key={r.id}
+                    className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[var(--text-secondary)]"
+                  >
+                    <span className="text-[var(--text-primary)]">{r.nome}</span>
+                    <span>{r.email}</span>
+                    {r.telefone && <span>{r.telefone}</span>}
+                    <span className="text-xs text-[var(--text-muted)]">
+                      apagada em{" "}
+                      {new Date(r.removidoEm).toLocaleDateString("pt-BR")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-[var(--text-muted)]">
+              Serve para reconhecer a pessoa se ela se cadastrar de novo com os
+              mesmos dados. A conta em si não volta.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {removerDe && (
+        <ModalRemover
+          usuario={removerDe}
+          salvando={salvando}
+          onCancelar={() => setRemoverDe(null)}
+          onConfirmar={() => apagar(removerDe)}
+        />
+      )}
 
       {dadosDe && (
         <ModalDados
@@ -623,6 +739,56 @@ export function UsuariosClient({
   );
 }
 
+/**
+ * Apagar não tem volta: o modal diz o que vai embora e o que fica, e exige o
+ * clique no botão vermelho — não é um `confirm()` que se aceita no reflexo.
+ */
+function ModalRemover({
+  usuario,
+  salvando,
+  onCancelar,
+  onConfirmar,
+}: {
+  usuario: Usuario;
+  salvando: boolean;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
+        <h2 className="font-display text-lg font-bold text-[var(--text-primary)]">
+          Apagar {usuario.nome}?
+        </h2>
+
+        <p className="text-sm text-[var(--text-secondary)]">
+          A conta some da lista de vez. Vão junto as matrículas, os vínculos com
+          unidades e as notificações dela.
+        </p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Ficam: as turmas e convites que ela criou (passam para você), a
+          auditoria, e uma ficha no histórico com nome, email e telefone — para
+          você reconhecê-la se voltar a se cadastrar.
+        </p>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            variant="destructive"
+            className="flex-1"
+            disabled={salvando}
+            onClick={onConfirmar}
+          >
+            {salvando ? "Apagando..." : "Apagar de vez"}
+          </Button>
+          <Button variant="ghost" onClick={onCancelar} disabled={salvando}>
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModalDados({
   usuario,
   salvando,
@@ -647,6 +813,11 @@ function ModalDados({
     telefone.trim() !== (usuario.telefone ?? "") ||
     (profissao || null) !== usuario.profissao;
 
+  // Nome completo e WhatsApp são o que faz a pessoa ser achada na lista e
+  // avisada da vaga: aqui valem a mesma régua do cadastro.
+  const erroNome = erroNomeCompleto(nome);
+  const erroTel = erroWhatsapp(telefone);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="w-full max-w-md space-y-4 rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)] p-6">
@@ -655,24 +826,31 @@ function ModalDados({
         </h2>
 
         <div className="space-y-2">
-          <Label htmlFor="dados-nome">Nome completo</Label>
+          <Label htmlFor="dados-nome">Nome completo *</Label>
           <Input
             id="dados-nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             autoFocus
           />
+          {erroNome && (
+            <p className="text-xs text-[var(--status-danger-fg)]">{erroNome}</p>
+          )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="dados-telefone">Telefone</Label>
+          <Label htmlFor="dados-telefone">WhatsApp (com DDD) *</Label>
           <Input
             id="dados-telefone"
             value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
+            onChange={(e) => setTelefone(formatarTelefone(e.target.value))}
             placeholder="(71) 99999-9999"
             maxLength={15}
+            inputMode="tel"
           />
+          {erroTel && (
+            <p className="text-xs text-[var(--status-danger-fg)]">{erroTel}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -695,7 +873,7 @@ function ModalDados({
         <div className="flex gap-2 pt-2">
           <Button
             className="flex-1"
-            disabled={salvando || !mudou || nome.trim().length < 3}
+            disabled={salvando || !mudou || !!erroNome || !!erroTel}
             onClick={() =>
               onSalvar({
                 nome: nome.trim(),

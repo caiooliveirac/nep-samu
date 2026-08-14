@@ -40,6 +40,8 @@ export default function NovoCursoPage() {
           cargaHoraria: form.get("cargaHoraria")
             ? Number(form.get("cargaHoraria"))
             : undefined,
+          // As profissões vão como dado; o texto é só o rótulo que a tela lê.
+          publicoAlvoProfissoes: publicoAlvo,
           publicoAlvoDescritivo: publicoAlvoText || undefined,
         }),
       });
@@ -88,18 +90,22 @@ export default function NovoCursoPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cargaHoraria">Carga Horária (minutos)</Label>
+          <Label htmlFor="cargaHoraria">Carga horária (horas)</Label>
           <Input
             id="cargaHoraria"
             name="cargaHoraria"
             type="number"
             min={1}
-            placeholder="Ex.: 480"
+            placeholder="Ex.: 8"
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Público-alvo (profissões)</Label>
+          <Label>Categorias profissionais que o curso atende</Label>
+          <p className="text-xs text-[var(--text-muted)]">
+            Ficam salvas no curso: toda turma nova deste curso já nasce com
+            estas categorias marcadas como elegíveis.
+          </p>
           <div className="flex flex-wrap gap-2">
             {PROFISSOES.map((p) => (
               <button

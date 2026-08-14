@@ -14,39 +14,28 @@ interface Curso {
   id: string;
   nome: string;
   descricao: string | null;
-  categoriaId: string | null;
   cargaHoraria: number | null;
+  publicoAlvoProfissoes: string[] | null;
   publicoAlvoDescritivo: string | null;
 }
 
-interface Categoria {
-  id: string;
-  nome: string;
-}
-
+/**
+ * Cursos antigos só têm a frase ("Médico(a), Enfermeiro(a)"): dá para
+ * reconhecer as profissões nela até o curso ser salvo de novo, quando a lista
+ * passa a ser dado de verdade.
+ */
 function parsePublicoAlvo(text: string | null): string[] {
   if (!text) return [];
-  // Try to match known profissão labels back to keys
-  const selected: string[] = [];
-  for (const p of PROFISSOES) {
-    if (text.includes(PROFISSAO_LABELS[p])) {
-      selected.push(p);
-    }
-  }
-  return selected;
+  return PROFISSOES.filter((p) => text.includes(PROFISSAO_LABELS[p]));
 }
 
-export function EditarCursoForm({
-  curso,
-  categorias,
-}: {
-  curso: Curso;
-  categorias: Categoria[];
-}) {
+export function EditarCursoForm({ curso }: { curso: Curso }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [publicoAlvo, setPublicoAlvo] = useState<string[]>(
-    parsePublicoAlvo(curso.publicoAlvoDescritivo),
+    curso.publicoAlvoProfissoes?.length
+      ? curso.publicoAlvoProfissoes
+      : parsePublicoAlvo(curso.publicoAlvoDescritivo),
   );
 
   function toggleProfissao(p: string) {
@@ -71,10 +60,10 @@ export function EditarCursoForm({
         body: JSON.stringify({
           nome: form.get("nome"),
           descricao: form.get("descricao") || undefined,
-          categoriaId: form.get("categoriaId") || undefined,
           cargaHoraria: form.get("cargaHoraria")
             ? Number(form.get("cargaHoraria"))
             : undefined,
+          publicoAlvoProfissoes: publicoAlvo,
           publicoAlvoDescritivo: publicoAlvoText || undefined,
         }),
       });
@@ -105,23 +94,6 @@ export function EditarCursoForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="categoriaId">Categoria</Label>
-        <select
-          id="categoriaId"
-          name="categoriaId"
-          defaultValue={curso.categoriaId || ""}
-          className="flex h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-        >
-          <option value="">Sem categoria</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="descricao">Descrição</Label>
         <textarea
           id="descricao"
@@ -134,19 +106,23 @@ export function EditarCursoForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cargaHoraria">Carga Horária (minutos)</Label>
+        <Label htmlFor="cargaHoraria">Carga horária (horas)</Label>
         <Input
           id="cargaHoraria"
           name="cargaHoraria"
           type="number"
           min={1}
           defaultValue={curso.cargaHoraria || ""}
-          placeholder="Ex.: 480"
+          placeholder="Ex.: 8"
         />
       </div>
 
       <div className="space-y-2">
-        <Label>Público-alvo (profissões)</Label>
+        <Label>Categorias profissionais que o curso atende</Label>
+        <p className="text-xs text-[var(--text-muted)]">
+          Ficam salvas no curso: toda turma nova deste curso já nasce com estas
+          categorias marcadas como elegíveis.
+        </p>
         <div className="flex flex-wrap gap-2">
           {PROFISSOES.map((p) => (
             <button

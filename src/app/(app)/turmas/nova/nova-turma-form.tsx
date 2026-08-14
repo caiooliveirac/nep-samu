@@ -13,6 +13,7 @@ import type { Profissao } from "@/lib/enums";
 interface Curso {
   id: string;
   nome: string;
+  publicoAlvoProfissoes: string[] | null;
 }
 
 export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
@@ -21,9 +22,32 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
   const preselectedCursoId = searchParams.get("cursoId") || "";
 
   const [loading, setLoading] = useState(false);
-  const [profissoesSelecionadas, setProfissoesSelecionadas] = useState<string[]>([
-    ...PROFISSOES,
-  ]);
+  const [cursoId, setCursoId] = useState(preselectedCursoId);
+
+  /*
+   * As categorias profissionais que a pessoa marcou no curso são a resposta
+   * para "quem pode fazer esta turma". Antes a turma nascia com TODAS as
+   * profissões marcadas e o que foi escolhido no curso não valia para nada.
+   * Aqui a turma herda do curso — e continua editável, caso esta edição abra
+   * exceção.
+   */
+  const profissoesDoCurso = (id: string) =>
+    cursos.find((c) => c.id === id)?.publicoAlvoProfissoes ?? [];
+
+  const [profissoesSelecionadas, setProfissoesSelecionadas] = useState<string[]>(
+    () => {
+      const herdadas = profissoesDoCurso(preselectedCursoId);
+      return herdadas.length > 0 ? [...herdadas] : [...PROFISSOES];
+    },
+  );
+
+  function trocarCurso(novoId: string) {
+    setCursoId(novoId);
+    const herdadas = profissoesDoCurso(novoId);
+    setProfissoesSelecionadas(herdadas.length > 0 ? [...herdadas] : [...PROFISSOES]);
+  }
+
+  const herdouDoCurso = profissoesDoCurso(cursoId).length > 0;
 
   const [publicoExterno, setPublicoExterno] = useState("");
 
@@ -88,7 +112,8 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
           id="cursoId"
           name="cursoId"
           required
-          defaultValue={preselectedCursoId}
+          value={cursoId}
+          onChange={(e) => trocarCurso(e.target.value)}
           className="flex h-10 w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         >
           <option value="">Selecione um curso</option>
@@ -205,6 +230,12 @@ export function NovaTurmaForm({ cursos }: { cursos: Curso[] }) {
       {/* Profissões elegíveis */}
       <div className="space-y-2">
         <Label>Profissões elegíveis *</Label>
+        {herdouDoCurso && (
+          <p className="text-xs text-[var(--text-muted)]">
+            Já vêm marcadas as categorias profissionais cadastradas no curso.
+            Trocar o curso refaz esta seleção.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {PROFISSOES.map((p) => (
             <button

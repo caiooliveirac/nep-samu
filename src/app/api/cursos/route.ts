@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
       .values({
         nome: parsed.nome,
         descricao: parsed.descricao,
-        categoriaId: parsed.categoriaId,
         cargaHoraria: parsed.cargaHoraria,
+        publicoAlvoProfissoes: parsed.publicoAlvoProfissoes,
         publicoAlvoDescritivo: parsed.publicoAlvoDescritivo,
       })
       .returning();

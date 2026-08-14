@@ -118,6 +118,7 @@ export const NOTIFICACAO_TIPO = [
   "CANCELADO_NAO_CONFIRMOU",
   "TURMA_CANCELADA",
   "VAGA_LIBERADA_REDISTRIBUICAO",
+  "TROCA_UNIDADE_SOLICITADA",
 ] as const;
 export type NotificacaoTipo = (typeof NOTIFICACAO_TIPO)[number];
 
