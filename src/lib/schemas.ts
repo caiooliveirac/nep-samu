@@ -83,7 +83,9 @@ export const profissionalSchema = z.object({
 
 export const unidadeSchema = z.object({
   nome: z.string().min(3, "Nome obrigatório"),
-  tipo: z.enum(["SAMU", "UPA", "HOSPITAL", "OUTRO"]),
+  // Texto livre: a rede tem PA, policlínica, base descentralizada… fixar um
+  // enum obrigaria deploy para cada tipo novo.
+  tipo: z.string().trim().min(2, "Informe o tipo da unidade"),
   municipioId: z.string().uuid("Selecione um município"),
   endereco: z.string().optional(),
 });

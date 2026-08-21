@@ -79,7 +79,7 @@ export default function NovoCursoPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="descricao">Descrição</Label>
+          <Label htmlFor="descricao">Descrição (opcional)</Label>
           <textarea
             id="descricao"
             name="descricao"

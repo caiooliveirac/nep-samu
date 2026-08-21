@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/server/db";
 import { notificacoes } from "@/server/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc, isNull } from "drizzle-orm";
 import { Bell } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDateTime } from "@/lib/format";
@@ -17,6 +17,20 @@ export default async function NotificacoesPage() {
     orderBy: [desc(notificacoes.createdAt)],
     limit: 50,
   });
+
+  // Abrir a lista É ler: nem o sino nem o destaque laranja voltam a cobrar
+  // depois desta visita. O critério é `lidaEm`, o mesmo do destaque — assim
+  // não sobra notificação (uma que falhou no envio, por exemplo) marcada como
+  // nova para sempre. O motivo da falha continua na coluna `erro`.
+  await db
+    .update(notificacoes)
+    .set({ status: "LIDA", lidaEm: new Date() })
+    .where(
+      and(
+        eq(notificacoes.destinatarioId, session.user.id),
+        isNull(notificacoes.lidaEm),
+      ),
+    );
 
   return (
     <div className="space-y-6">
