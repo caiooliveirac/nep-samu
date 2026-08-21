@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { apiFetch } from "@/lib/api-client";
+import { ApiError, apiFetch } from "@/lib/api-client";
 import { UNIDADE_TIPO, UNIDADE_TIPO_LABELS } from "@/lib/enums";
 
 interface Unidade {
@@ -25,6 +25,8 @@ interface Unidade {
   tipo: string;
   endereco: string | null;
   ativo: boolean;
+  // Quantas pessoas têm vínculo com a unidade. Vem contado do servidor.
+  pessoas: number;
   municipio: { id: string; nome: string } | null;
 }
 
@@ -110,12 +112,40 @@ export function UnidadesClient({
     [unidades],
   );
 
+  // Unidade com gente cadastrada não é apagada — e a organizadora não precisa
+  // descobrir isso batendo num erro. A tela já sabe quantas pessoas há, então
+  // avisa antes, diz que o histórico delas continua servindo para certificado,
+  // e oculta a unidade da lista, que é o que ela queria de fato.
   async function excluir(u: Unidade) {
-    if (
-      !confirm(
-        `Excluir a unidade ${u.nome}? Essa ação não pode ser desfeita.`,
+    if (u.pessoas > 0) {
+      const pessoas =
+        u.pessoas === 1 ? "1 pessoa cadastrada" : `${u.pessoas} pessoas cadastradas`;
+      if (
+        !confirm(
+          `A unidade ${u.nome} tem ${pessoas}.\n\n` +
+            "Ela não será apagada: fica oculta da lista, e o histórico dessas " +
+            "pessoas continua disponível — inclusive para emitir certificado.\n\n" +
+            "Ocultar a unidade agora?",
+        )
       )
-    )
+        return;
+      setProcessando(u.id);
+      try {
+        await apiFetch(`/api/unidades/${u.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ ativo: false }),
+        });
+        toast.success("Unidade ocultada. O histórico foi preservado.");
+        router.refresh();
+      } catch {
+        toast.error("Não foi possível ocultar a unidade.");
+      } finally {
+        setProcessando(null);
+      }
+      return;
+    }
+
+    if (!confirm(`Excluir a unidade ${u.nome}? Essa ação não pode ser desfeita.`))
       return;
     setProcessando(u.id);
     try {
@@ -123,15 +153,22 @@ export function UnidadesClient({
       toast.success("Unidade excluída.");
       router.refresh();
     } catch (error) {
-      const msg =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível excluir a unidade.";
-      // Apagar de vez apagaria vínculos e matrículas junto. Desativar tira a
-      // unidade da lista do mesmo jeito e preserva o histórico.
+      // 409 é a unidade presa por turma, cota, matrícula ou convite: mesmo
+      // desfecho, mesma conversa — ocultar em vez de despejar o erro. Falha de
+      // rede ou de permissão é outra história e continua sendo dita como erro.
+      if (!(error instanceof ApiError) || error.status !== 409) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível excluir a unidade.",
+        );
+        return;
+      }
       if (
         confirm(
-          `${msg}\n\nOcultar a unidade da lista (desativar) em vez de excluir?`,
+          `A unidade ${u.nome} já foi usada em turmas ou convites e por isso ` +
+            "não pode ser apagada — o histórico ligado a ela seria perdido.\n\n" +
+            "Ocultar a unidade da lista?",
         )
       ) {
         try {
@@ -139,13 +176,11 @@ export function UnidadesClient({
             method: "PATCH",
             body: JSON.stringify({ ativo: false }),
           });
-          toast.success("Unidade ocultada da lista.");
+          toast.success("Unidade ocultada. O histórico foi preservado.");
           router.refresh();
         } catch {
           toast.error("Não foi possível ocultar a unidade.");
         }
-      } else {
-        toast.error(msg);
       }
     } finally {
       setProcessando(null);
@@ -330,7 +365,11 @@ export function UnidadesClient({
                         variant="ghost"
                         onClick={() => excluir(u)}
                         disabled={processando === u.id}
-                        title="Excluir unidade"
+                        title={
+                          u.pessoas > 0
+                            ? "Ocultar unidade (tem pessoas cadastradas)"
+                            : "Excluir unidade"
+                        }
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
