@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiFetch } from "@/lib/api-client";
-import { UNIDADE_TIPO } from "@/lib/enums";
+import { UNIDADE_TIPO, UNIDADE_TIPO_LABELS } from "@/lib/enums";
 
 interface Unidade {
   id: string;
@@ -36,15 +36,9 @@ interface Municipio {
 const TIPO_ORDER: Record<string, number> = {
   SAMU: 0,
   UPA: 1,
-  HOSPITAL: 2,
-  OUTRO: 3,
-};
-
-const TIPO_LABELS: Record<string, string> = {
-  SAMU: "SAMU",
-  UPA: "UPA",
-  HOSPITAL: "Hospital",
-  OUTRO: "Outro",
+  PA: 2,
+  HOSPITAL: 3,
+  OUTRO: 4,
 };
 
 type SortKey = "municipio" | "tipo" | "nome";
@@ -102,6 +96,19 @@ export function UnidadesClient({
   // "nova" abre o modal vazio; uma Unidade abre em modo edição.
   const [modal, setModal] = useState<Unidade | "nova" | null>(null);
   const [processando, setProcessando] = useState<string | null>(null);
+  // Unidade desativada some da lista: é o "sumir da minha visão" pedido. O
+  // histórico continua no banco e a caixa abaixo traz de volta quando precisa.
+  const [mostrarInativas, setMostrarInativas] = useState(false);
+
+  // Tipos já usados entram na lista do formulário: um tipo novo digitado uma
+  // vez vira opção para as próximas unidades, sem deploy.
+  const tiposConhecidos = useMemo(
+    () =>
+      Array.from(
+        new Set([...UNIDADE_TIPO, ...unidades.map((u) => u.tipo)]),
+      ).filter(Boolean),
+    [unidades],
+  );
 
   async function excluir(u: Unidade) {
     if (
@@ -116,11 +123,30 @@ export function UnidadesClient({
       toast.success("Unidade excluída.");
       router.refresh();
     } catch (error) {
-      toast.error(
+      const msg =
         error instanceof Error
           ? error.message
-          : "Não foi possível excluir a unidade.",
-      );
+          : "Não foi possível excluir a unidade.";
+      // Apagar de vez apagaria vínculos e matrículas junto. Desativar tira a
+      // unidade da lista do mesmo jeito e preserva o histórico.
+      if (
+        confirm(
+          `${msg}\n\nOcultar a unidade da lista (desativar) em vez de excluir?`,
+        )
+      ) {
+        try {
+          await apiFetch(`/api/unidades/${u.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ ativo: false }),
+          });
+          toast.success("Unidade ocultada da lista.");
+          router.refresh();
+        } catch {
+          toast.error("Não foi possível ocultar a unidade.");
+        }
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setProcessando(null);
     }
@@ -165,8 +191,13 @@ export function UnidadesClient({
     }
   }
 
+  const visiveis = useMemo(
+    () => (mostrarInativas ? unidades : unidades.filter((u) => u.ativo)),
+    [unidades, mostrarInativas],
+  );
+
   const sorted = useMemo(() => {
-    const arr = [...unidades];
+    const arr = [...visiveis];
     if (!sortKey) return arr.sort(defaultSort);
 
     return arr.sort((a, b) => {
@@ -180,7 +211,7 @@ export function UnidadesClient({
       }
       return sortDir === "desc" ? -cmp : cmp;
     });
-  }, [unidades, sortKey, sortDir]);
+  }, [visiveis, sortKey, sortDir]);
 
   return (
     <div className="space-y-6">
@@ -188,13 +219,26 @@ export function UnidadesClient({
         <div>
           <h1 className="font-display text-2xl font-bold">Unidades</h1>
           <p className="text-sm text-[var(--text-secondary)]">
-            {unidades.length} unidade(s) cadastrada(s)
+            {visiveis.length} unidade(s)
+            {!mostrarInativas && unidades.length !== visiveis.length
+              ? ` — ${unidades.length - visiveis.length} oculta(s)`
+              : ""}
           </p>
         </div>
-        <Button onClick={() => setModal("nova")}>
-          <Plus className="h-4 w-4" />
-          Nova Unidade
-        </Button>
+        <div className="flex items-center gap-3">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <input
+              type="checkbox"
+              checked={mostrarInativas}
+              onChange={(e) => setMostrarInativas(e.target.checked)}
+            />
+            Mostrar ocultas
+          </label>
+          <Button onClick={() => setModal("nova")}>
+            <Plus className="h-4 w-4" />
+            Nova Unidade
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-[var(--border-default)] bg-[var(--bg-secondary)]">
@@ -242,7 +286,7 @@ export function UnidadesClient({
                   <td className="px-5 py-3 font-medium">{u.nome}</td>
                   <td className="px-5 py-3">
                     <Badge variant={u.tipo === "SAMU" ? "default" : "outline"}>
-                      {TIPO_LABELS[u.tipo] || u.tipo}
+                      {UNIDADE_TIPO_LABELS[u.tipo] || u.tipo}
                     </Badge>
                   </td>
                   <td className="px-5 py-3 text-[var(--text-secondary)]">
@@ -303,6 +347,7 @@ export function UnidadesClient({
         <ModalUnidade
           unidade={modal === "nova" ? null : modal}
           municipios={municipios}
+          tipos={tiposConhecidos}
           onFechar={() => setModal(null)}
         />
       )}
@@ -313,10 +358,12 @@ export function UnidadesClient({
 function ModalUnidade({
   unidade,
   municipios,
+  tipos,
   onFechar,
 }: {
   unidade: Unidade | null;
   municipios: Municipio[];
+  tipos: string[];
   onFechar: () => void;
 }) {
   const router = useRouter();
@@ -338,7 +385,7 @@ function ModalUnidade({
           method: "PATCH",
           body: JSON.stringify({
             nome: nome.trim(),
-            tipo,
+            tipo: tipo.trim(),
             municipioId,
             endereco: endereco.trim(),
             ativo,
@@ -350,7 +397,7 @@ function ModalUnidade({
           method: "POST",
           body: JSON.stringify({
             nome: nome.trim(),
-            tipo,
+            tipo: tipo.trim(),
             municipioId,
             endereco: endereco.trim() || undefined,
           }),
@@ -393,19 +440,22 @@ function ModalUnidade({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="un-tipo">Tipo *</Label>
-            <select
+            {/* Lista de sugestões, não fechada: dá para digitar um tipo que
+                ainda não existe e ele passa a valer para as próximas. */}
+            <Input
               id="un-tipo"
+              list="un-tipos"
               value={tipo}
               onChange={(e) => setTipo(e.target.value)}
-              className={selectClass}
-            >
-              <option value="">Selecione…</option>
-              {UNIDADE_TIPO.map((t) => (
+              placeholder="SAMU, UPA, PA…"
+            />
+            <datalist id="un-tipos">
+              {tipos.map((t) => (
                 <option key={t} value={t}>
-                  {TIPO_LABELS[t]}
+                  {UNIDADE_TIPO_LABELS[t] ?? t}
                 </option>
               ))}
-            </select>
+            </datalist>
           </div>
 
           <div className="space-y-2">
@@ -453,7 +503,7 @@ function ModalUnidade({
         <div className="flex gap-2 pt-2">
           <Button
             className="flex-1"
-            disabled={salvando || nome.trim().length < 3 || !tipo || !municipioId}
+            disabled={salvando || nome.trim().length < 3 || tipo.trim().length < 2 || !municipioId}
             onClick={salvar}
           >
             {salvando ? "Salvando..." : "Salvar"}

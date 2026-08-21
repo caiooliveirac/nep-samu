@@ -3,7 +3,7 @@ import { notificacoes } from "@/server/db/schema";
 import { auth } from "@/server/auth/config";
 import { apiError, apiSuccess } from "@/server/lib/utils";
 import { ForbiddenError } from "@/server/lib/errors";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -16,7 +16,8 @@ export async function GET() {
       .where(
         and(
           eq(notificacoes.destinatarioId, session.user.id),
-          inArray(notificacoes.status, ["PENDENTE", "ENVIADA"]),
+          // Mesmo critério do destaque na lista: não lida é não lida.
+          isNull(notificacoes.lidaEm),
         ),
       );
 

@@ -142,5 +142,15 @@ export type NotificacaoStatus = (typeof NOTIFICACAO_STATUS)[number];
 export const CHECKIN_METODO = ["MANUAL", "QR_CODE"] as const;
 export type CheckinMetodo = (typeof CHECKIN_METODO)[number];
 
-export const UNIDADE_TIPO = ["SAMU", "UPA", "HOSPITAL", "OUTRO"] as const;
+// Sugestões, não camisa de força: o tipo é texto livre e a tela deixa digitar
+// um tipo novo (a lista do formulário junta estas com as já usadas no banco).
+export const UNIDADE_TIPO = ["SAMU", "UPA", "PA", "HOSPITAL", "OUTRO"] as const;
 export type UnidadeTipo = (typeof UNIDADE_TIPO)[number];
+
+export const UNIDADE_TIPO_LABELS: Record<string, string> = {
+  SAMU: "SAMU",
+  UPA: "UPA",
+  PA: "PA",
+  HOSPITAL: "Hospital",
+  OUTRO: "Outro",
+};

@@ -94,7 +94,7 @@ export function EditarCursoForm({ curso }: { curso: Curso }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="descricao">Descrição</Label>
+        <Label htmlFor="descricao">Descrição (opcional)</Label>
         <textarea
           id="descricao"
           name="descricao"

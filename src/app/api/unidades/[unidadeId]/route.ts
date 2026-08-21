@@ -19,7 +19,7 @@ import {
   ValidationError,
 } from "@/server/lib/errors";
 import { hasPermission } from "@/server/auth/rbac";
-import { UNIDADE_TIPO, type Role } from "@/lib/enums";
+import { type Role } from "@/lib/enums";
 import { isValidUUID } from "@/lib/schemas";
 import { logAudit } from "@/server/services/audit.service";
 import { getRequestIp } from "@/server/lib/rate-limit";
@@ -32,7 +32,7 @@ const updateSchema = z
       .trim()
       .min(3, "Nome deve ter no mínimo 3 caracteres")
       .optional(),
-    tipo: z.enum(UNIDADE_TIPO).optional(),
+    tipo: z.string().trim().min(2, "Informe o tipo da unidade").optional(),
     municipioId: z.string().uuid("Selecione um município").optional(),
     endereco: z.string().trim().nullish(),
     // Unidade não é apagada: desativar preserva vínculos e histórico de
